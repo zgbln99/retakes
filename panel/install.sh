@@ -54,6 +54,7 @@ After=network.target
 Type=simple
 User=${RUN_USER}
 WorkingDirectory=${PANEL_DIR}
+EnvironmentFile=${PANEL_DIR}/.env
 ExecStart=$(command -v node) ${PANEL_DIR}/server.js
 Restart=always
 RestartSec=5
