@@ -102,6 +102,18 @@ public class AdminFunCommandsMenu
             menu.AddOption("Normalna szybkość", a => OnPawn(a, targetSteamId, pawn =>
                 SetSpeed(pawn, 1.0f), $"{targetName}: normalna szybkość"));
 
+            menu.AddOption("Wielkość: mały (0.5x)", a => OnPawn(a, targetSteamId, pawn =>
+                SetSize(pawn, 0.5f), $"{targetName}: mały"));
+
+            menu.AddOption("Wielkość: duży (1.5x)", a => OnPawn(a, targetSteamId, pawn =>
+                SetSize(pawn, 1.5f), $"{targetName}: duży"));
+
+            menu.AddOption("Wielkość: gigant (2.5x)", a => OnPawn(a, targetSteamId, pawn =>
+                SetSize(pawn, 2.5f), $"{targetName}: gigant"));
+
+            menu.AddOption("Wielkość: normalna", a => OnPawn(a, targetSteamId, pawn =>
+                SetSize(pawn, 1.0f), $"{targetName}: normalna wielkość"));
+
             menu.AddOption("Zabierz bronie", a => OnController(a, targetSteamId, c =>
                 c.RemoveWeapons(), $"{targetName}: bronie zabrane"));
 
@@ -132,6 +144,13 @@ public class AdminFunCommandsMenu
     private static void SetSpeed(CCSPlayerPawn pawn, float modifier)
     {
         pawn.VelocityModifier = modifier;
+    }
+
+    private static void SetSize(CCSPlayerPawn pawn, float scale)
+    {
+        // Scale the player model via the entity's SetScale input — the reliable
+        // way to resize a player in CS2.
+        pawn.AcceptInput("SetScale", pawn, pawn, scale.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
     #endregion
 
