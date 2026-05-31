@@ -8,6 +8,15 @@ Plugin **nie zadziała** bez tych dwóch komponentów — zainstaluj je przed pl
 2. **CounterStrikeSharp** (API ≥ 345) — wersja **z runtime** ("with runtime").
    Część hostingów (w tym DatHost) ma go w panelu; jeśli nie, pobierz z
    [releases](https://github.com/roflmuffin/CounterStrikeSharp/releases).
+3. **CS2MenuManager** — biblioteka menu w stylu SimpleAdmin (WASD: W/S/E/R).
+   Pobierz najnowszy ZIP z
+   [releases CS2MenuManager](https://github.com/schwarper/CS2MenuManager/releases)
+   i rozpakuj do `addons/counterstrikesharp/` — powstanie folder
+   `addons/counterstrikesharp/shared/CS2MenuManager/` (z `CS2MenuManager.dll` i
+   `config.toml`). Bez tego menu (`!admin`, `!guns`, głosowanie) **nie otworzą się**.
+
+   > W `config.toml` można ustawić domyślny typ menu na `WasdMenu` — wtedy wszystkie
+   > menu wyglądają dokładnie jak w SimpleAdmin (W góra / S dół / E wybór / R wyjście).
 
 Weryfikacja w konsoli serwera:
 - `meta list` → powinien pokazać `CounterStrikeSharp`
