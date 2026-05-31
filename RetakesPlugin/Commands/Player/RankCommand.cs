@@ -24,18 +24,18 @@ public class RankCommand
 
         if (!_statsService.IsReady)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[Retakes]{ChatColors.White} Statistics are currently unavailable.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Statistics are currently unavailable.");
             return;
         }
 
         var stats = _statsService.GetCached(player!.SteamID);
         if (stats == null)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[Retakes]{ChatColors.White} No stats recorded for you yet.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} No stats recorded for you yet.");
             return;
         }
 
-        player.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Your stats:");
+        player.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Your stats:");
         player.PrintToChat(
             $" {ChatColors.Grey}Kills:{ChatColors.Green} {stats.Kills}{ChatColors.Grey} | Deaths:{ChatColors.Red} {stats.Deaths}" +
             $"{ChatColors.Grey} | K/D:{ChatColors.Gold} {stats.KillDeathRatio}");

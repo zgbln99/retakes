@@ -67,7 +67,7 @@ public static class ServerHelper
                 mp_death_drop_grenade 1
                 mp_warmuptime 15
 
-                echo [Retakes] Config loaded!
+                echo [CWELOWNIA] Config loaded!
             ";
 
             var retakesCfgBytes = Encoding.UTF8.GetBytes(retakesCfgContents);

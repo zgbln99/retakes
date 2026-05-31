@@ -80,7 +80,7 @@ public class AdminMenuService
                 toggle.Set(newValue);
 
                 p.PrintToChat(
-                    $" {ChatColors.Green}[Retakes]{ChatColors.White} {toggle.DisplayName}: " +
+                    $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} {toggle.DisplayName}: " +
                     (newValue ? $"{ChatColors.Green}ON" : $"{ChatColors.Red}OFF"));
 
                 // Reopen so the state label refreshes.
@@ -109,7 +109,7 @@ public class AdminMenuService
                 }
 
                 p.PrintToChat(
-                    $" {ChatColors.Green}[Retakes]{ChatColors.White} Wykonano: {ChatColors.Green}{action.DisplayName}");
+                    $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wykonano: {ChatColors.Green}{action.DisplayName}");
             });
         }
 

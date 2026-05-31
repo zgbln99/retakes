@@ -44,20 +44,20 @@ public class MapVoteService
     {
         if (!_settings.IsEnabled)
         {
-            player.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Głosowanie na mapę jest wyłączone.");
+            player.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Głosowanie na mapę jest wyłączone.");
             return;
         }
 
         if (_voteActive)
         {
-            player.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Głosowanie już trwa.");
+            player.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Głosowanie już trwa.");
             return;
         }
 
         var steamId = player.SteamID;
         if (!_rtvVoters.Add(steamId))
         {
-            player.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Już zagłosowałeś za zmianą mapy.");
+            player.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Już zagłosowałeś za zmianą mapy.");
             return;
         }
 
@@ -65,7 +65,7 @@ public class MapVoteService
         var have = _rtvVoters.Count;
 
         Server.PrintToChatAll(
-            $" {ChatColors.Green}[Retakes]{ChatColors.White} {player.PlayerName} chce zmienić mapę " +
+            $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} {player.PlayerName} chce zmienić mapę " +
             $"({ChatColors.Gold}{have}/{needed}{ChatColors.White}). Wpisz {ChatColors.Green}!rtv{ChatColors.White}.");
 
         if (have >= needed)
@@ -79,13 +79,13 @@ public class MapVoteService
     {
         if (!_settings.IsEnabled)
         {
-            admin.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Głosowanie na mapę jest wyłączone.");
+            admin.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Głosowanie na mapę jest wyłączone.");
             return;
         }
 
         if (_voteActive)
         {
-            admin.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Głosowanie już trwa.");
+            admin.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Głosowanie już trwa.");
             return;
         }
 
@@ -115,7 +115,7 @@ public class MapVoteService
         _votes.Clear();
         _candidates = PickCandidates();
 
-        Server.PrintToChatAll($" {ChatColors.Green}[Retakes]{ChatColors.White} Rozpoczęto głosowanie na mapę!");
+        Server.PrintToChatAll($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Rozpoczęto głosowanie na mapę!");
 
         foreach (var player in Utilities.GetPlayers())
         {
@@ -153,7 +153,7 @@ public class MapVoteService
             menu.AddMenuOption(captured, (p, _) =>
             {
                 _votes[p.SteamID] = captured;
-                p.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Zagłosowałeś na: {ChatColors.Gold}{captured}");
+                p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Zagłosowałeś na: {ChatColors.Gold}{captured}");
                 MenuManager.CloseActiveMenu(p);
             });
         }
@@ -182,7 +182,7 @@ public class MapVoteService
         }
 
         Server.PrintToChatAll(
-            $" {ChatColors.Green}[Retakes]{ChatColors.White} Wygrała mapa: {ChatColors.Gold}{winner}{ChatColors.White}. Zmiana za {(int)_settings.ChangeDelaySeconds}s...");
+            $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wygrała mapa: {ChatColors.Gold}{winner}{ChatColors.White}. Zmiana za {(int)_settings.ChangeDelaySeconds}s...");
 
         _rtvVoters.Clear();
 

@@ -17,7 +17,7 @@ namespace RetakesPlugin.Services;
 public class InstadefuseService
 {
     private const string LogPrefix = "[Instadefuse] ";
-    private static readonly string MessagePrefix = $" [{ChatColors.Green}Retakes{ChatColors.White}] ";
+    private static readonly string MessagePrefix = $" [{ChatColors.Green}CWELOWNIA{ChatColors.White}] ";
 
     private readonly InstadefuseSettings _settings;
 

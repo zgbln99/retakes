@@ -48,6 +48,6 @@ public class AdminWeaponSetMenu
     private static void Announce(string setName)
     {
         Server.PrintToChatAll(
-            $" {ChatColors.Green}[Retakes]{ChatColors.White} Zestaw broni ustawiony na: {ChatColors.Gold}{setName}{ChatColors.White} (od następnej rundy).");
+            $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Zestaw broni ustawiony na: {ChatColors.Gold}{setName}{ChatColors.White} (od następnej rundy).");
     }
 }

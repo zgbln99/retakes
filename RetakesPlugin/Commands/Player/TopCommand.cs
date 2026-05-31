@@ -26,7 +26,7 @@ public class TopCommand
 
         if (!_statsService.IsReady)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[Retakes]{ChatColors.White} Statistics are currently unavailable.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Statistics are currently unavailable.");
             return;
         }
 
@@ -44,7 +44,7 @@ public class TopCommand
                         .FirstOrDefault(p => p.IsValid && p.SteamID == steamId);
                     if (target is not { IsValid: true }) return;
 
-                    target.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Top players:");
+                    target.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Top players:");
 
                     if (top.Count == 0)
                     {

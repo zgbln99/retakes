@@ -28,7 +28,7 @@ public class AdminMenuCommand
 
         if (!_adminMenuService.CanUse(player!))
         {
-            command.ReplyToCommand($" {ChatColors.Green}[Retakes]{ChatColors.White} You don't have permission to use this command.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} You don't have permission to use this command.");
             return;
         }
 

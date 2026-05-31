@@ -29,7 +29,7 @@ public class GunsCommand
 
         if (!_weaponService.Settings.IsEnabled || !_weaponService.Settings.AllowPreferences)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[Retakes]{ChatColors.White} Weapon preferences are disabled.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Weapon preferences are disabled.");
             return;
         }
 
@@ -54,7 +54,7 @@ public class GunsCommand
             {
                 var current = _weaponService.GetOrCreatePreference(p.SteamID);
                 current.PreferSniper = !current.PreferSniper;
-                p.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Snajperka: " +
+                p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Snajperka: " +
                               (current.PreferSniper ? $"{ChatColors.Green}TAK" : $"{ChatColors.Red}nie"));
                 OpenMainMenu(p);
             });
@@ -63,7 +63,7 @@ public class GunsCommand
         menu.AddMenuOption($"{ChatColors.Grey}Reset (wszystko losowo)", (p, _) =>
         {
             _weaponService.ResetPreference(p.SteamID);
-            p.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Preferencje zresetowane do losowych.");
+            p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Preferencje zresetowane do losowych.");
             OpenMainMenu(p);
         });
 
@@ -84,7 +84,7 @@ public class GunsCommand
             var pref = _weaponService.GetOrCreatePreference(p.SteamID);
             if (team == CsTeam.Terrorist) pref.TerroristRifle = null;
             else pref.CounterTerroristRifle = null;
-            p.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Karabin {teamName}: {ChatColors.Gold}Losowo");
+            p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Karabin {teamName}: {ChatColors.Gold}Losowo");
             OpenMainMenu(p);
         });
 
@@ -95,7 +95,7 @@ public class GunsCommand
                 var pref = _weaponService.GetOrCreatePreference(p.SteamID);
                 if (team == CsTeam.Terrorist) pref.TerroristRifle = rifle;
                 else pref.CounterTerroristRifle = rifle;
-                p.PrintToChat($" {ChatColors.Green}[Retakes]{ChatColors.White} Karabin {teamName}: {ChatColors.Gold}{WeaponAllocationService.DisplayName(rifle)}");
+                p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Karabin {teamName}: {ChatColors.Gold}{WeaponAllocationService.DisplayName(rifle)}");
                 OpenMainMenu(p);
             });
         }
