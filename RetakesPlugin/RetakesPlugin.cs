@@ -244,6 +244,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // Remote config edit, queued by the web panel as:
         //   css_rcon_setcfg <key> <value>   (e.g. css_rcon_setcfg weapon.sniperchance 0.1)
         AddCommand("css_rcon_setcfg", "Remote config edit (used by the web panel).", OnRconSetCfgCommand);
+        AddCommand("css_rcon_savecfg", "Persist current config to disk (used by the web panel).", OnRconSaveCfgCommand);
 
         // Remote control bridge (web panel on a VPS via the shared MySQL database).
         _remoteControlService = new RemoteControlService(this, Config.RemoteControl, Config.Stats.Database, () => _isChangingMap);
@@ -810,6 +811,17 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         Utils.Logger.LogInfo("Remote", applied
             ? $"Config set: {key} = {value}"
             : $"Config key not recognised: {key}");
+
+        // Persist immediately so the change survives a restart.
+        if (applied) Services.ConfigPersistence.Save(Config);
+    }
+
+    // css_rcon_savecfg — force-write the current config to disk (panel "Save").
+    private void OnRconSaveCfgCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player != null && player.IsValid) return;
+        var ok = Services.ConfigPersistence.Save(Config);
+        Utils.Logger.LogInfo("Remote", ok ? "Config saved to disk" : "Config save failed");
     }
 
     private HookResult OnCommandJoinTeam(CCSPlayerController? player, CommandInfo commandInfo)

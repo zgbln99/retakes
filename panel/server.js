@@ -113,6 +113,12 @@ app.post('/api/setcfg', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Persist the live config to disk on the game server (so edits survive restart).
+app.post('/api/config/save', async (_req, res) => {
+  try { await queueCommand('css_rcon_savecfg'); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/player', async (req, res) => {
   const steamId = String(req.body.steamId || '').trim();
   const action = String(req.body.action || '').trim().toLowerCase();
