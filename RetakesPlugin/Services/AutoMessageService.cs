@@ -20,6 +20,7 @@ public class AutoMessageService
     private int _chatIndex;
     private int _tipIndex;
     private int _roundCounter;
+    private volatile bool _stopped;
 
     public AutoMessageService(BasePlugin plugin, AutoMessageSettings settings)
     {
@@ -35,9 +36,12 @@ public class AutoMessageService
         _plugin.AddTimer(interval, ShowNextChatMessage, TimerFlags.REPEAT);
     }
 
+    /// <summary>Stops the periodic chat advert (called when a map change starts).</summary>
+    public void StopTimers() => _stopped = true;
+
     private void ShowNextChatMessage()
     {
-        if (!_settings.IsEnabled || _settings.ChatMessages.Count == 0) return;
+        if (_stopped || !_settings.IsEnabled || _settings.ChatMessages.Count == 0) return;
 
         // Don't advertise to an empty server.
         if (!Utilities.GetPlayers().Any(p => p.IsValid && !p.IsBot)) return;

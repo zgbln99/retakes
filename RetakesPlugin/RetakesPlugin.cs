@@ -101,6 +101,31 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     #region State
     private readonly HashSet<CCSPlayerController> _hasMutedVoices = [];
+
+    /// <summary>
+    /// Set true the moment a map change is initiated (vote finished / admin). While
+    /// true, all game-logic event handlers and timers bail out early, so nothing
+    /// touches entities the engine is unloading during ChangeLevel. Reset on the
+    /// next OnMapStart. volatile because timer/event callbacks may run on different
+    /// threads than the one that sets it.
+    /// </summary>
+    private volatile bool _isChangingMap;
+
+    public bool IsChangingMap => _isChangingMap;
+
+    /// <summary>
+    /// Called right before a ChangeLevel. Freezes all plugin game logic and kills
+    /// the repeating timers so nothing fires while the map is unloading.
+    /// </summary>
+    public void BeginMapChange()
+    {
+        _isChangingMap = true;
+        Utils.Logger.LogInfo("MapChange", "Map change starting — plugin logic frozen");
+
+        // Stop periodic work that would otherwise fire during the unload.
+        _statsService?.StopTimers();
+        _autoMessageService?.StopTimers();
+    }
     #endregion
 
     public RetakesPlugin()
@@ -188,6 +213,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         // Player-driven map vote (rock the vote)
         _mapVoteService = new MapVoteService(this, Config.MapVote, _random);
+        // Freeze all plugin logic just before the map actually changes.
+        _mapVoteService.OnBeginMapChange = BeginMapChange;
         var rtvCommand = new RtvCommand(_mapVoteService);
         AddCommand("css_rtv", "Rock the vote — request a map change.", rtvCommand.OnCommand);
         AddCommand("css_votemap", "Rock the vote — request a map change.", rtvCommand.OnCommand);
@@ -325,6 +352,9 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private void OnMapStart(string mapName)
     {
         Utils.Logger.LogInfo("MapStart", $"Map started: {mapName}");
+
+        // New map has loaded — unfreeze plugin logic.
+        _isChangingMap = false;
 
         _mapVoteService?.Reset();
         SpawnService.Reset();
@@ -477,6 +507,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     #region Event Handlers
     private HookResult OnPlayerConnectFull(EventPlayerConnectFull @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
+
         var player = @event.Userid;
         if (player is { IsValid: true, IsBot: false })
         {
@@ -489,11 +521,14 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private HookResult OnRoundPreStart(EventRoundPrestart @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         return _roundEventHandlers?.OnRoundPreStart(@event, info) ?? HookResult.Continue;
     }
 
     private HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
+
         _instadefuseService?.ResetForNewRound();
         _killFeedService?.Reset();
         _autoMessageService?.OnRoundStart();
@@ -509,33 +544,41 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private HookResult OnRoundPostStart(EventRoundPoststart @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         return _roundEventHandlers?.OnRoundPostStart(@event, info) ?? HookResult.Continue;
     }
 
     private HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         return _roundEventHandlers?.OnRoundFreezeEnd(@event, info) ?? HookResult.Continue;
     }
 
     private HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
+
         _statsService?.OnRoundEnd();
         return _roundEventHandlers?.OnRoundEnd(@event, info) ?? HookResult.Continue;
     }
 
     private HookResult OnMatchEnd(EventCsWinPanelMatch @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         _mapVoteService?.OnMatchEnd();
         return HookResult.Continue;
     }
 
     private HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         return _playerEventHandlers?.OnPlayerSpawn(@event, info) ?? HookResult.Continue;
     }
 
     private HookResult OnPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
+
         _statsService?.OnPlayerDeath(@event);
         _killFeedService?.OnPlayerDeath(@event);
         return _playerEventHandlers?.OnPlayerDeath(@event, info) ?? HookResult.Continue;
@@ -543,6 +586,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private HookResult OnBombPlanted(EventBombPlanted @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
+
         _instadefuseService?.OnBombPlanted();
         return _roundEventHandlers?.OnBombPlanted(@event, info) ?? HookResult.Continue;
     }
@@ -550,42 +595,49 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     #region Instadefuse Event Handlers
     private HookResult OnGrenadeThrown(EventGrenadeThrown @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         _instadefuseService?.OnGrenadeThrown(@event.Weapon);
         return HookResult.Continue;
     }
 
     private HookResult OnInfernoStartBurn(EventInfernoStartburn @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         _instadefuseService?.OnInfernoStartBurn(@event.X, @event.Y, @event.Z, @event.Entityid);
         return HookResult.Continue;
     }
 
     private HookResult OnInfernoExtinguish(EventInfernoExtinguish @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         _instadefuseService?.OnInfernoGone(@event.Entityid);
         return HookResult.Continue;
     }
 
     private HookResult OnInfernoExpire(EventInfernoExpire @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         _instadefuseService?.OnInfernoGone(@event.Entityid);
         return HookResult.Continue;
     }
 
     private HookResult OnHeGrenadeDetonate(EventHegrenadeDetonate @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         _instadefuseService?.OnHeDetonate();
         return HookResult.Continue;
     }
 
     private HookResult OnMolotovDetonate(EventMolotovDetonate @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         _instadefuseService?.OnMolotovDetonate();
         return HookResult.Continue;
     }
 
     private HookResult OnBombBeginDefuse(EventBombBegindefuse @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         _instadefuseService?.OnBombBeginDefuse(@event.Userid);
         return HookResult.Continue;
     }
@@ -593,22 +645,28 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private HookResult OnBombDefused(EventBombDefused @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         return _roundEventHandlers?.OnBombDefused(@event, info) ?? HookResult.Continue;
     }
 
     private HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
+        // Always let stats flush a disconnecting player, but skip the retakes
+        // queue logic during a map change (it touches teams/entities being torn down).
         var player = @event.Userid;
         if (player is { IsValid: true, IsBot: false })
         {
             _statsService?.OnPlayerDisconnect(player.SteamID);
         }
 
+        if (_isChangingMap) return HookResult.Continue;
+
         return _playerEventHandlers?.OnPlayerDisconnect(@event, info) ?? HookResult.Continue;
     }
 
     private HookResult OnPlayerTeam(EventPlayerTeam @event, GameEventInfo info)
     {
+        if (_isChangingMap) return HookResult.Continue;
         return _playerEventHandlers?.OnPlayerTeam(@event, info) ?? HookResult.Continue;
     }
     #endregion
@@ -616,6 +674,9 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     #region Command Handlers
     private HookResult OnCommandJoinTeam(CCSPlayerController? player, CommandInfo commandInfo)
     {
+        // Don't touch teams/queues while the map is unloading.
+        if (_isChangingMap) return HookResult.Continue;
+
         // EXPERIMENTAL free team choice: let the engine handle jointeam directly,
         // bypassing the retakes queue/balance. See TeamSettings.AllowFreeTeamChoice.
         if (Config.Team.AllowFreeTeamChoice)

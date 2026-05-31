@@ -29,6 +29,7 @@ public class StatsService
     private readonly object _lock = new();
 
     private bool _databaseReady;
+    private volatile bool _stopped;
 
     public StatsService(BasePlugin plugin, StatsSettings settings, IStatsRepository repository)
     {
@@ -37,7 +38,7 @@ public class StatsService
         _repository = repository;
     }
 
-    private bool Active => _settings.IsEnabled && _databaseReady;
+    private bool Active => _settings.IsEnabled && _databaseReady && !_stopped;
 
     public bool IsReady => Active;
 
@@ -66,6 +67,17 @@ public class StatsService
 
         var interval = Math.Max(15.0f, _settings.FlushIntervalSeconds);
         _plugin.AddTimer(interval, FlushDirty, TimerFlags.REPEAT);
+    }
+
+    /// <summary>
+    /// Stops periodic work (called when a map change starts). Performs one final
+    /// synchronous-style flush request so nothing is lost, then goes quiet.
+    /// </summary>
+    public void StopTimers()
+    {
+        if (_stopped) return;
+        FlushDirty();   // final flush while still Active
+        _stopped = true;
     }
 
     #region Game-thread counting

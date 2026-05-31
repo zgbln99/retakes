@@ -22,6 +22,12 @@ public class MapVoteService
     private List<string> _candidates = new();
     private bool _voteActive;
 
+    /// <summary>
+    /// Invoked right before the map changes, so the plugin can freeze its game
+    /// logic (set _isChangingMap) and stop timers before ChangeLevel.
+    /// </summary>
+    public Action? OnBeginMapChange { get; set; }
+
     public MapVoteService(BasePlugin plugin, MapVoteSettings settings, Random random)
     {
         _plugin = plugin;
@@ -235,16 +241,20 @@ public class MapVoteService
     }
 
     /// <summary>
-    /// Changes the map with a plain changelevel. Guards against an empty name so a
-    /// bad config can never run a malformed command.
+    /// Changes the map with a plain changelevel. Freezes plugin logic first (via
+    /// OnBeginMapChange) so no event handler or timer touches entities while the
+    /// engine unloads the map. Guards against an empty name.
     /// </summary>
-    private static void ChangeMap(string mapName)
+    private void ChangeMap(string mapName)
     {
         if (string.IsNullOrWhiteSpace(mapName))
         {
             Utils.Logger.LogWarning("MapVote", "Empty map name, skipping change");
             return;
         }
+
+        // Freeze the plugin BEFORE the changelevel so nothing runs during unload.
+        OnBeginMapChange?.Invoke();
 
         Utils.Logger.LogInfo("MapVote", $"Executing: changelevel {mapName}");
         Server.ExecuteCommand($"changelevel {mapName}");
