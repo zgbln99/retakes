@@ -25,5 +25,5 @@ public class AdminMenuSettings
     /// command alias (prefix with css_).
     /// </summary>
     [JsonPropertyName("OpenCommands")]
-    public List<string> OpenCommands { get; set; } = new() { "css_admin", "css_panel" };
+    public List<string> OpenCommands { get; set; } = new() { "css_cwel", "css_cwelownia" };
 }
