@@ -59,6 +59,22 @@ public class GunsCommand
                                   (current.PreferSniper ? $"{ChatColors.Green}TAK" : $"{ChatColors.Red}nie"));
                     ShowMainMenu(p);
                 });
+
+                // When the player prefers a sniper AND the scout is allowed, let them
+                // choose whether they want the SSG 08 specifically.
+                if (pref?.PreferSniper == true && _weaponService.Settings.AllowScout)
+                {
+                    var wantsScout = pref?.PreferredSniper == "weapon_ssg08";
+                    menu.AddOption($"  → Chcę Scout (SSG 08): {ChatColors.Gold}{(wantsScout ? "TAK" : "nie")}", p =>
+                    {
+                        var current = _weaponService.GetOrCreatePreference(p.SteamID);
+                        current.PreferredSniper = current.PreferredSniper == "weapon_ssg08" ? null : "weapon_ssg08";
+                        _weaponService.SavePreference(p.SteamID);
+                        p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Scout (SSG 08): " +
+                                      (current.PreferredSniper == "weapon_ssg08" ? $"{ChatColors.Green}TAK" : $"{ChatColors.Red}nie (losowa snajperka)"));
+                        ShowMainMenu(p);
+                    });
+                }
             }
 
             menu.AddOption($"{ChatColors.Grey}Reset (wszystko losowo)", p =>

@@ -137,6 +137,10 @@ public class WeaponAllocationService
 
         if (_settings.AllowSnipers && pref?.PreferSniper == true && snipers.Count > 0)
         {
+            // Honour a specific sniper choice (AWP/Scout) if still allowed,
+            // otherwise fall back to a random allowed sniper.
+            var chosen = pref.PreferredSniper;
+            if (chosen != null && snipers.Contains(chosen)) return chosen;
             return Pick(snipers);
         }
 

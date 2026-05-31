@@ -26,15 +26,30 @@ public class MySqlWeaponPreferenceRepository : IWeaponPreferenceRepository
 
         var sql = $@"
 CREATE TABLE IF NOT EXISTS `{_table}` (
-    `steam_id`   BIGINT UNSIGNED NOT NULL PRIMARY KEY,
-    `t_rifle`    VARCHAR(64)     NULL,
-    `ct_rifle`   VARCHAR(64)     NULL,
-    `sniper`     TINYINT(1)      NOT NULL DEFAULT 0,
-    `updated_at` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    `steam_id`    BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+    `t_rifle`     VARCHAR(64)     NULL,
+    `ct_rifle`    VARCHAR(64)     NULL,
+    `sniper`      TINYINT(1)      NOT NULL DEFAULT 0,
+    `pref_sniper` VARCHAR(64)     NULL,
+    `updated_at`  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
 
-        await using var command = new MySqlCommand(sql, connection);
-        await command.ExecuteNonQueryAsync();
+        await using (var command = new MySqlCommand(sql, connection))
+        {
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Add the column on tables created before pref_sniper existed (idempotent).
+        try
+        {
+            var alter = $"ALTER TABLE `{_table}` ADD COLUMN IF NOT EXISTS `pref_sniper` VARCHAR(64) NULL;";
+            await using var alterCmd = new MySqlCommand(alter, connection);
+            await alterCmd.ExecuteNonQueryAsync();
+        }
+        catch
+        {
+            // Older MySQL without IF NOT EXISTS on ADD COLUMN — ignore if it already exists.
+        }
     }
 
     public async Task<WeaponPreference?> LoadAsync(ulong steamId)
@@ -42,7 +57,7 @@ CREATE TABLE IF NOT EXISTS `{_table}` (
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        var sql = $"SELECT `t_rifle`, `ct_rifle`, `sniper` FROM `{_table}` WHERE `steam_id` = @id;";
+        var sql = $"SELECT `t_rifle`, `ct_rifle`, `sniper`, `pref_sniper` FROM `{_table}` WHERE `steam_id` = @id;";
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@id", steamId);
 
@@ -53,7 +68,8 @@ CREATE TABLE IF NOT EXISTS `{_table}` (
         {
             TerroristRifle = reader.IsDBNull(0) ? null : reader.GetString(0),
             CounterTerroristRifle = reader.IsDBNull(1) ? null : reader.GetString(1),
-            PreferSniper = reader.GetBoolean(2)
+            PreferSniper = reader.GetBoolean(2),
+            PreferredSniper = reader.IsDBNull(3) ? null : reader.GetString(3)
         };
     }
 
@@ -63,18 +79,20 @@ CREATE TABLE IF NOT EXISTS `{_table}` (
         await connection.OpenAsync();
 
         var sql = $@"
-INSERT INTO `{_table}` (`steam_id`, `t_rifle`, `ct_rifle`, `sniper`)
-VALUES (@id, @t, @ct, @sniper)
+INSERT INTO `{_table}` (`steam_id`, `t_rifle`, `ct_rifle`, `sniper`, `pref_sniper`)
+VALUES (@id, @t, @ct, @sniper, @psniper)
 ON DUPLICATE KEY UPDATE
     `t_rifle` = VALUES(`t_rifle`),
     `ct_rifle` = VALUES(`ct_rifle`),
-    `sniper` = VALUES(`sniper`);";
+    `sniper` = VALUES(`sniper`),
+    `pref_sniper` = VALUES(`pref_sniper`);";
 
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@id", steamId);
         command.Parameters.AddWithValue("@t", (object?)preference.TerroristRifle ?? DBNull.Value);
         command.Parameters.AddWithValue("@ct", (object?)preference.CounterTerroristRifle ?? DBNull.Value);
         command.Parameters.AddWithValue("@sniper", preference.PreferSniper ? 1 : 0);
+        command.Parameters.AddWithValue("@psniper", (object?)preference.PreferredSniper ?? DBNull.Value);
         await command.ExecuteNonQueryAsync();
     }
 
