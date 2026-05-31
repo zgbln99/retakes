@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Retakes</AssemblyName>
+    <RootNamespace>Retakes</RootNamespace>
+    <!-- CounterStrikeSharp dostarcza zależności na serwerze, nie kopiujemy ich do outputu -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Wersję dopasuj do tej zainstalowanej na serwerze (Metamod + CounterStrikeSharp) -->
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.305" />
+  </ItemGroup>
+
+</Project>
