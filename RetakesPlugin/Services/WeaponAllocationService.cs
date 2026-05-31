@@ -45,6 +45,13 @@ public class WeaponAllocationService
         AvailableSets.FirstOrDefault(s => s.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
     #endregion
 
+    #region Fun mode (admin)
+    /// <summary>Active symmetric fun mode (applied to everyone equally).</summary>
+    public FunMode ActiveFunMode { get; private set; } = FunMode.None;
+
+    public void SetFunMode(FunMode mode) => ActiveFunMode = mode;
+    #endregion
+
     public void Allocate(CCSPlayerController player)
     {
         if (!_settings.IsEnabled) return;
@@ -65,6 +72,14 @@ public class WeaponAllocationService
         if (team == CsTeam.CounterTerrorist && _settings.GiveDefuserToCt)
         {
             GiveDefuser(player);
+        }
+
+        // Symmetric weapon fun mode overrides normal allocation for everyone.
+        if (ActiveFunMode.IsWeaponMode())
+        {
+            ApplyFunWeapons(player);
+            player.GiveNamedItem("weapon_knife");
+            return;
         }
 
         var primary = ChoosePrimary(player.SteamID, team);
@@ -196,6 +211,25 @@ public class WeaponAllocationService
         return teammates <= 1;
     }
     #endregion
+
+    private void ApplyFunWeapons(CCSPlayerController player)
+    {
+        switch (ActiveFunMode)
+        {
+            case FunMode.KnivesOnly:
+                // Knife is given by the caller.
+                break;
+            case FunMode.DeagleOnly:
+                player.GiveNamedItem("weapon_deagle");
+                break;
+            case FunMode.HeWar:
+                player.GiveNamedItem("weapon_hegrenade");
+                break;
+            case FunMode.ScoutsOnly:
+                player.GiveNamedItem("weapon_ssg08");
+                break;
+        }
+    }
 
     private static void GiveDefuser(CCSPlayerController player)
     {

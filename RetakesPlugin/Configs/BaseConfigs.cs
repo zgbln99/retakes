@@ -44,11 +44,14 @@ public class BaseConfigs : BasePluginConfig
     [JsonPropertyName("AutoMessageSettings")]
     public AutoMessageSettings AutoMessage { get; set; } = new();
 
+    [JsonPropertyName("FunModeSettings")]
+    public FunModeSettings Fun { get; set; } = new();
+
     [JsonPropertyName("DebugSettings")]
     public DebugSettings Debug { get; set; } = new();
 
     [JsonPropertyName("ConfigVersion")]
-    public override int Version { get; set; } = 3;
+    public override int Version { get; set; } = 4;
 }
 
 public class DebugSettings

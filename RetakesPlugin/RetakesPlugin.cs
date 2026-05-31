@@ -66,6 +66,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private MapVoteService? _mapVoteService;
     private KillFeedService? _killFeedService;
     private AutoMessageService? _autoMessageService;
+    private AdminFunModeMenu? _adminFunModeMenu;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -153,8 +154,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // Built-in weapon allocator (random allocation + !guns preferences)
         _weaponAllocationService = new WeaponAllocationService(Config.Weapon, _random);
         // Persist preferences in the same MySQL database as stats, whenever the DB
-        // is configured (independent of the stats feature toggle).
-        if (!string.IsNullOrWhiteSpace(Config.Stats.Database.Host))
+        // is configured via config or env vars (independent of the stats toggle).
+        if (Services.Stats.DbConnectionFactory.IsConfigured(Config.Stats.Database))
         {
             _weaponAllocationService.AttachRepository(
                 new MySqlWeaponPreferenceRepository(Config.Stats.Database));
@@ -173,6 +174,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         AddCommand("css_rank", "Show your PvP stats.", rankCommand.OnCommand);
         AddCommand("css_stats", "Show your PvP stats.", rankCommand.OnCommand);
         AddCommand("css_top", "Show the PvP leaderboard.", topCommand.OnCommand);
+
+        // Admin DB connection test
+        var dbTestCommand = new DbTestCommand(Config.Stats.Database);
+        AddCommand("css_dbtest", "Test the MySQL database connection.", dbTestCommand.OnCommand);
 
         // On-screen / chat HUD: kill streaks, dominations, bomb location
         _killFeedService = new KillFeedService(() => Config.Hud.IsEnabled && Config.Hud.ShowKillStreaks);
@@ -276,6 +281,18 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
                 DisplayName = "Wybór zestawu broni",
                 Open = weaponSetMenu.Open
             });
+
+            // Fun-mode submenu (symmetric, server-wide).
+            if (Config.Fun.IsEnabled)
+            {
+                _adminFunModeMenu = new AdminFunModeMenu(this, _weaponAllocationService, Config.Fun);
+                var funMenu = _adminFunModeMenu;
+                _adminMenuService.RegisterSubmenu(new AdminSubmenu
+                {
+                    DisplayName = "Tryb fun (noże/deagle/HE/scout/low-grav)",
+                    Open = funMenu.Open
+                });
+            }
         }
 
         // Round actions (reuse existing registered commands / direct callbacks).
@@ -480,6 +497,13 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _instadefuseService?.ResetForNewRound();
         _killFeedService?.Reset();
         _autoMessageService?.OnRoundStart();
+
+        // Re-apply the gravity cvar for the active fun mode (resets on map change).
+        if (_adminFunModeMenu != null && _weaponAllocationService != null)
+        {
+            _adminFunModeMenu.ApplyGravity(_weaponAllocationService.ActiveFunMode);
+        }
+
         return _roundEventHandlers?.OnRoundStart(@event, info) ?? HookResult.Continue;
     }
 
@@ -592,6 +616,13 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     #region Command Handlers
     private HookResult OnCommandJoinTeam(CCSPlayerController? player, CommandInfo commandInfo)
     {
+        // EXPERIMENTAL free team choice: let the engine handle jointeam directly,
+        // bypassing the retakes queue/balance. See TeamSettings.AllowFreeTeamChoice.
+        if (Config.Team.AllowFreeTeamChoice)
+        {
+            return HookResult.Continue;
+        }
+
         if (_gameManager == null)
         {
             Utils.Logger.LogWarning("Commands", "Game manager not loaded");

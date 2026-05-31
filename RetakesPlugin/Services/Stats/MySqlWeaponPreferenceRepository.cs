@@ -15,20 +15,8 @@ public class MySqlWeaponPreferenceRepository : IWeaponPreferenceRepository
 
     public MySqlWeaponPreferenceRepository(DatabaseSettings settings)
     {
-        _connectionString = new MySqlConnectionStringBuilder
-        {
-            Server = settings.Host,
-            Port = settings.Port,
-            UserID = settings.User,
-            Password = settings.Password,
-            Database = settings.Name,
-            Pooling = true,
-            MinimumPoolSize = 0,
-            MaximumPoolSize = 5,
-            ConnectionTimeout = 10
-        }.ConnectionString;
-
-        _table = $"{settings.TablePrefix}weapon_prefs";
+        _connectionString = DbConnectionFactory.BuildConnectionString(settings);
+        _table = $"{DbConnectionFactory.TablePrefix(settings)}weapon_prefs";
     }
 
     public async Task InitializeAsync()
