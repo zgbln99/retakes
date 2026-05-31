@@ -65,6 +65,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private StatsService? _statsService;
     private MapVoteService? _mapVoteService;
     private KillFeedService? _killFeedService;
+    private AutoMessageService? _autoMessageService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -169,6 +170,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // On-screen / chat HUD: kill streaks, dominations, bomb location
         _killFeedService = new KillFeedService(() => Config.Hud.IsEnabled && Config.Hud.ShowKillStreaks);
 
+        // Periodic automatic messages (chat advert + round-start tip)
+        _autoMessageService = new AutoMessageService(this, Config.AutoMessage);
+        _autoMessageService.Initialize();
+
         // Player-driven map vote (rock the vote)
         _mapVoteService = new MapVoteService(this, Config.MapVote, _random);
         var rtvCommand = new RtvCommand(_mapVoteService);
@@ -245,6 +250,14 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             DisplayName = "Komunikaty HUD (bomba/serie)",
             Get = () => Config.Hud.IsEnabled,
             Set = value => Config.Hud.IsEnabled = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "automsg",
+            DisplayName = "Automatyczne wiadomości",
+            Get = () => Config.AutoMessage.IsEnabled,
+            Set = value => Config.AutoMessage.IsEnabled = value
         });
 
         // Weapon-set submenu (force a global loadout / back to random).
@@ -458,6 +471,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     {
         _instadefuseService?.ResetForNewRound();
         _killFeedService?.Reset();
+        _autoMessageService?.OnRoundStart();
         return _roundEventHandlers?.OnRoundStart(@event, info) ?? HookResult.Continue;
     }
 

@@ -41,6 +41,9 @@ public class BaseConfigs : BasePluginConfig
     [JsonPropertyName("HudSettings")]
     public HudSettings Hud { get; set; } = new();
 
+    [JsonPropertyName("AutoMessageSettings")]
+    public AutoMessageSettings AutoMessage { get; set; } = new();
+
     [JsonPropertyName("DebugSettings")]
     public DebugSettings Debug { get; set; } = new();
 
