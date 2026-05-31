@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync } from 'fs';
 
-import { queueCommand, getStatus, getTop, getCommandHistory } from './db.js';
+import { queueCommand, getStatus, getTop, getCommandHistory, getPlayers, queuePlayerAction } from './db.js';
 
 // Minimal .env loader (no extra dependency).
 try {
@@ -71,6 +71,29 @@ app.get('/api/history', async (_req, res) => {
   try {
     res.json({ commands: await getCommandHistory(30) });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/players', async (_req, res) => {
+  try {
+    res.json({ players: await getPlayers() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Per-player action. The action is validated against a fixed allowlist.
+const PLAYER_ACTIONS = new Set([
+  'kick', 'slay', 'respawn', 't', 'ct', 'spec', 'strip',
+  'god', 'ungod', 'hp', 'freeze', 'unfreeze', 'noclip',
+  'lowgrav', 'normgrav', 'speed', 'normspeed',
+  'small', 'big', 'giant', 'normsize'
+]);
+
+app.post('/api/player', async (req, res) => {
+  const steamId = String(req.body.steamId || '').trim();
+  const action = String(req.body.action || '').trim().toLowerCase();
+  if (!/^\d{5,20}$/.test(steamId)) return res.status(400).json({ error: 'bad steamId' });
+  if (!PLAYER_ACTIONS.has(action)) return res.status(400).json({ error: 'bad action' });
+  try { await queuePlayerAction(steamId, action); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Generic command queue (validated server-side too).

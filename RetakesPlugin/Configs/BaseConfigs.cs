@@ -57,7 +57,7 @@ public class BaseConfigs : BasePluginConfig
     public DebugSettings Debug { get; set; } = new();
 
     [JsonPropertyName("ConfigVersion")]
-    public override int Version { get; set; } = 7;
+    public override int Version { get; set; } = 8;
 }
 
 public class DebugSettings

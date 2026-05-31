@@ -5,7 +5,8 @@ const prefix = process.env.DB_PREFIX || 'retakes_';
 export const tables = {
   commands: `${prefix}remote_commands`,
   status: `${prefix}server_status`,
-  stats: `${prefix}player_stats`
+  stats: `${prefix}player_stats`,
+  players: `${prefix}server_players`
 };
 
 export const serverId = process.env.SERVER_ID || 'cwelownia1';
@@ -49,6 +50,21 @@ export async function getTop(limit = 25) {
     [Number(limit)]
   );
   return rows;
+}
+
+/** Players currently on the server (published by the plugin). */
+export async function getPlayers() {
+  const [rows] = await pool.query(
+    `SELECT steam_id, name, team, alive, updated_at
+     FROM \`${tables.players}\` WHERE server_id = ? ORDER BY team DESC, name ASC`,
+    [serverId]
+  );
+  return rows;
+}
+
+/** Queue a per-player action (executed in-game by css_rcon_player). */
+export async function queuePlayerAction(steamId, action) {
+  await queueCommand(`css_rcon_player ${steamId} ${action}`);
 }
 
 /** Recent command history. */

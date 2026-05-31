@@ -38,6 +38,6 @@ public class RemoteControlSettings
     [JsonPropertyName("AllowedCommandPrefixes")]
     public List<string> AllowedCommandPrefixes { get; set; } = new()
     {
-        "css_", "changelevel", "map", "mp_", "sv_", "bot_", "kickid", "say", "exec"
+        "css_", "changelevel", "map", "mp_", "sv_", "bot_", "kickid", "say", "exec", "sv_gravity"
     };
 }

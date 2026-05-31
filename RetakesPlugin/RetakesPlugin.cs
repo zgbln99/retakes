@@ -234,6 +234,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _autoEndMapVoteService = new AutoEndMapVoteService(this, _menuService, Config.AutoEndMapVote, _random);
         _autoEndMapVoteService.OnBeginMapChange = BeginMapChange;
 
+        // Remote per-player action, queued by the web panel as:
+        //   css_rcon_player <steamid64> <action>   (e.g. css_rcon_player 7656... god)
+        AddCommand("css_rcon_player", "Remote per-player action (used by the web panel).", OnRconPlayerCommand);
+
         // Remote control bridge (web panel on a VPS via the shared MySQL database).
         _remoteControlService = new RemoteControlService(this, Config.RemoteControl, Config.Stats.Database, () => _isChangingMap);
         _remoteControlService.Initialize();
@@ -741,6 +745,21 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     #endregion
 
     #region Command Handlers
+    // css_rcon_player <steamid64> <action> — queued by the web panel; runs a
+    // shared player action. Only meaningful from the server console / remote bridge.
+    private void OnRconPlayerCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        // Ignore if a real in-game player typed it (server/console only).
+        if (player != null && player.IsValid) return;
+        if (command.ArgCount < 3) return;
+
+        if (!ulong.TryParse(command.GetArg(1), out var steamId)) return;
+        var action = command.GetArg(2);
+
+        var ok = Services.PlayerActions.Apply(steamId, action, out var message);
+        Utils.Logger.LogInfo("Remote", ok ? $"Player action: {message}" : $"Player action failed: {message}");
+    }
+
     private HookResult OnCommandJoinTeam(CCSPlayerController? player, CommandInfo commandInfo)
     {
         // Don't touch teams/queues while the map is unloading.

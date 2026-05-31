@@ -45,7 +45,10 @@ public class RemoteControlService
         var prefix = DbConnectionFactory.TablePrefix(db);
         _commandsTable = $"{prefix}remote_commands";
         _statusTable = $"{prefix}server_status";
+        _playersTable = $"{prefix}server_players";
     }
+
+    private readonly string _playersTable;
 
     public void Initialize()
     {
@@ -108,6 +111,18 @@ CREATE TABLE IF NOT EXISTS `{_statusTable}` (
     `updated_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
         await using (var cmd = new MySqlCommand(statusSql, connection)) await cmd.ExecuteNonQueryAsync();
+
+        var playersSql = $@"
+CREATE TABLE IF NOT EXISTS `{_playersTable}` (
+    `server_id`  VARCHAR(64)     NOT NULL,
+    `steam_id`   BIGINT UNSIGNED NOT NULL,
+    `name`       VARCHAR(128)    NOT NULL DEFAULT '',
+    `team`       INT             NOT NULL DEFAULT 0,
+    `alive`      TINYINT(1)      NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`server_id`, `steam_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+        await using (var cmd = new MySqlCommand(playersSql, connection)) await cmd.ExecuteNonQueryAsync();
     }
 
     #region Poll & execute
@@ -237,8 +252,17 @@ ORDER BY `id` ASC;";
         Server.NextFrame(() =>
         {
             var map = Server.MapName ?? "";
-            var players = Utilities.GetPlayers().Count(p => p.IsValid && !p.IsBot && !p.IsHLTV);
             var maxPlayers = Server.MaxPlayers;
+
+            var roster = new List<(ulong steamId, string name, int team, bool alive)>();
+            foreach (var p in Utilities.GetPlayers())
+            {
+                if (!p.IsValid || p.IsBot || p.IsHLTV) continue;
+                if (p.SteamID == 0) continue;
+                roster.Add((p.SteamID, p.PlayerName, (int)p.Team, p.PawnIsAlive));
+            }
+
+            var playerCount = roster.Count;
 
             Task.Run(async () =>
             {
@@ -246,16 +270,40 @@ ORDER BY `id` ASC;";
                 {
                     await using var connection = new MySqlConnection(_connectionString);
                     await connection.OpenAsync();
-                    var sql = $@"
+
+                    var statusSql = $@"
 INSERT INTO `{_statusTable}` (`server_id`, `map`, `players`, `max_players`)
 VALUES (@sid, @map, @players, @max)
 ON DUPLICATE KEY UPDATE `map`=VALUES(`map`), `players`=VALUES(`players`), `max_players`=VALUES(`max_players`);";
-                    await using var cmd = new MySqlCommand(sql, connection);
-                    cmd.Parameters.AddWithValue("@sid", _settings.ServerId);
-                    cmd.Parameters.AddWithValue("@map", map);
-                    cmd.Parameters.AddWithValue("@players", players);
-                    cmd.Parameters.AddWithValue("@max", maxPlayers);
-                    await cmd.ExecuteNonQueryAsync();
+                    await using (var cmd = new MySqlCommand(statusSql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@sid", _settings.ServerId);
+                        cmd.Parameters.AddWithValue("@map", map);
+                        cmd.Parameters.AddWithValue("@players", playerCount);
+                        cmd.Parameters.AddWithValue("@max", maxPlayers);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    // Refresh the player roster: clear this server's rows, re-insert.
+                    await using (var del = new MySqlCommand($"DELETE FROM `{_playersTable}` WHERE `server_id` = @sid", connection))
+                    {
+                        del.Parameters.AddWithValue("@sid", _settings.ServerId);
+                        await del.ExecuteNonQueryAsync();
+                    }
+
+                    foreach (var (steamId, name, team, alive) in roster)
+                    {
+                        var insSql = $@"
+INSERT INTO `{_playersTable}` (`server_id`, `steam_id`, `name`, `team`, `alive`)
+VALUES (@sid, @steam, @name, @team, @alive);";
+                        await using var ins = new MySqlCommand(insSql, connection);
+                        ins.Parameters.AddWithValue("@sid", _settings.ServerId);
+                        ins.Parameters.AddWithValue("@steam", steamId);
+                        ins.Parameters.AddWithValue("@name", name.Length > 128 ? name[..128] : name);
+                        ins.Parameters.AddWithValue("@team", team);
+                        ins.Parameters.AddWithValue("@alive", alive ? 1 : 0);
+                        await ins.ExecuteNonQueryAsync();
+                    }
                 }
                 catch (Exception ex)
                 {

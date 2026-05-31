@@ -61,6 +61,12 @@
       <p class="small">Komenda trafia do kolejki MySQL i wykonuje się w grze (co kilka sekund).</p>
     </div>
 
+    <div class="card" style="grid-column:1/-1">
+      <h2>Gracze online</h2>
+      <table id="players"><thead><tr><th>Gracz</th><th>Drużyna</th><th>Status</th><th>Akcje</th></tr></thead><tbody></tbody></table>
+      <p class="small">Akcje wykonują się w grze w ciągu kilku sekund (kolejka MySQL).</p>
+    </div>
+
     <div class="card">
       <h2>Ranking (TOP)</h2>
       <table id="top"><thead><tr><th>#</th><th>Gracz</th><th>K</th><th>D</th><th>HS%</th></tr></thead><tbody></tbody></table>
@@ -105,10 +111,32 @@
     }
     function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
-    function refreshAll(){ refreshStatus(); refreshTop(); refreshHistory(); }
+    const TEAM = { 1:'Widz', 2:'T', 3:'CT' };
+    function playerAction(steamId, action) {
+      post('/api/player', { steamId, action }).then(()=>setTimeout(refreshPlayers, 600));
+    }
+    async function refreshPlayers() {
+      const d = await api('/api/players'); if (!d) return;
+      const acts = [
+        ['Kick','kick'],['Slay','slay'],['Respawn','respawn'],
+        ['→T','t'],['→CT','ct'],['→Spec','spec'],
+        ['God','god'],['UnGod','ungod'],['Freeze','freeze'],['UnFreeze','unfreeze'],
+        ['Noclip','noclip'],['LowGrav','lowgrav'],['Speed','speed'],
+        ['Mały','small'],['Duży','big'],['Gigant','giant'],['Norm','normsize']
+      ];
+      document.querySelector('#players tbody').innerHTML = d.players.map(p=>{
+        const buttons = acts.map(([label,a])=>
+          `<button class="sec" style="padding:4px 7px;font-size:12px" onclick="playerAction('${p.steam_id}','${a}')">${label}</button>`).join(' ');
+        return `<tr><td>${escapeHtml(p.name)}</td><td>${TEAM[p.team]||'-'}</td>`+
+               `<td>${p.alive?'żywy':'martwy'}</td><td>${buttons}</td></tr>`;
+      }).join('') || '<tr><td colspan="4" class="small">Brak graczy / brak danych.</td></tr>';
+    }
+
+    function refreshAll(){ refreshStatus(); refreshTop(); refreshHistory(); refreshPlayers(); }
     refreshAll();
     setInterval(refreshStatus, 5000);
     setInterval(refreshHistory, 5000);
+    setInterval(refreshPlayers, 5000);
     setInterval(refreshTop, 15000);
   </script>
 </body>
