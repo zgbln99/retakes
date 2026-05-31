@@ -8,10 +8,14 @@
   <ItemGroup>
     <PackageReference Include="CounterStrikeSharp.API" Version="1.0.367" />
     <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.8" />
+    <!-- WASD/SimpleAdmin-style menus. Provided on the server as a shared plugin
+         (addons/counterstrikesharp/shared/CS2MenuManager), so we compile against it
+         but do NOT copy it to our output (Private=false). -->
+    <PackageReference Include="CS2MenuManager" Version="1.0.42" Private="false" ExcludeAssets="runtime" />
     <!-- GeneratePathProperty lets us copy the runtime dll explicitly (see CopyMySqlConnector).
          The CounterStrikeSharp.API package disables copying NuGet deps to the output, but the
          server does NOT provide MySqlConnector, so the stats module needs it shipped alongside. -->
-    <PackageReference Include="MySqlConnector" Version="2.3.7" GeneratePathProperty="true" />
+    <PackageReference Include="MySqlConnector" Version="2.4.0" GeneratePathProperty="true" />
     <ProjectReference Include="..\RetakesPluginShared\RetakesPluginShared.csproj" />
   </ItemGroup>
 

@@ -1,23 +1,26 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Utils;
+using CS2MenuManager.API.Class;
+using CS2MenuManager.API.Enum;
+using CS2MenuManager.API.Menu;
 
 namespace RetakesPlugin.Services;
 
 /// <summary>
 /// Central menu framework for the whole plugin. Every menu is rendered through
-/// this one service so they look and behave identically (the SimpleAdmin-style
-/// CenterHtmlMenu: W/S to move, E to select). It adds:
+/// this one service so they look and behave identically — the SimpleAdmin-style
+/// WASD menu (W up / S down / E select / R exit) from the CS2MenuManager library.
+///
+/// It adds on top of the library:
 ///  - a per-player Back stack (« Wstecz returns to the previous screen)
-///  - a Close button (CenterHtmlMenu.ExitButton)
-///  - native Next/Prev pagination (CenterHtmlMenu.MenuItemsPerPage)
-///  - guards for null / invalid players and for map changes
+///  - guards for null / invalid players and for map changes (busy)
 ///  - CloseAll on unload / map change
 ///
-/// CenterHtmlMenu is the same menu type CS2 SimpleAdmin uses by default; the
-/// external ScreenMenu/WASD library is NOT part of CounterStrikeSharp 1.0.x, so
-/// it is intentionally not used (it would require a separate server-side plugin).
+/// CS2MenuManager's WasdMenu is the same menu CS2 SimpleAdmin uses. The library
+/// is provided on the server as a shared plugin
+/// (addons/counterstrikesharp/shared/CS2MenuManager), so it is referenced but not
+/// shipped inside this plugin.
 /// </summary>
 public class MenuService
 {
@@ -61,8 +64,7 @@ public class MenuService
             stack.Push(self);
         }
 
-        // CenterHtmlMenu paginates automatically; ExitButton renders the Close item.
-        var menu = new CenterHtmlMenu(title, _plugin)
+        var menu = new WasdMenu(title, _plugin)
         {
             ExitButton = true
         };
@@ -73,7 +75,7 @@ public class MenuService
         // Back option when there is a previous screen.
         if (stack.Count > 1)
         {
-            menu.AddMenuOption($"{ChatColors.Grey}« Wstecz", (p, _) =>
+            menu.AddItem($"{ChatColors.Grey}« Wstecz", (p, _) =>
             {
                 if (!CanOpen(p)) return;
                 var s = GetStack(p);
@@ -86,7 +88,7 @@ public class MenuService
             });
         }
 
-        MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
+        menu.Display(player, 0);
     }
 
     /// <summary>Closes the player's menu and clears their navigation history.</summary>
@@ -130,15 +132,21 @@ public interface IMenuBuilder
 
 internal sealed class MenuBuilder : IMenuBuilder
 {
-    private readonly CenterHtmlMenu _menu;
+    private readonly WasdMenu _menu;
 
-    public MenuBuilder(CenterHtmlMenu menu) => _menu = menu;
+    public MenuBuilder(WasdMenu menu) => _menu = menu;
 
     public void AddOption(string text, Action<CCSPlayerController> onSelect, bool disabled = false)
     {
-        _menu.AddMenuOption(text, (player, _) =>
+        if (disabled)
+        {
+            _menu.AddItem(text, DisableOption.DisableShowNumber);
+            return;
+        }
+
+        _menu.AddItem(text, (player, _) =>
         {
             if (player is { IsValid: true }) onSelect(player);
-        }, disabled);
+        });
     }
 }
