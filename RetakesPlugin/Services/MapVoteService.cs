@@ -238,6 +238,12 @@ public class MapVoteService
 
         _rtvVoters.Clear();
 
+        // Freeze the plugin NOW, the moment the vote ends — not at changelevel.
+        // Otherwise retakes keeps running during the delay and starts a new round
+        // (auto-planting a ticking bomb), and changelevel with a live planted_c4
+        // crashes the engine during unload.
+        OnBeginMapChange?.Invoke();
+
         _plugin.AddTimer(Math.Max(1.0f, _settings.ChangeDelaySeconds), () =>
         {
             ChangeMap(winner);
@@ -245,9 +251,9 @@ public class MapVoteService
     }
 
     /// <summary>
-    /// Changes the map with a plain changelevel. Freezes plugin logic first (via
-    /// OnBeginMapChange) so no event handler or timer touches entities while the
-    /// engine unloads the map. Guards against an empty name.
+    /// Changes the map. Removes any planted bomb and live grenade/projectile
+    /// entities first — changelevel while a planted_c4 is ticking crashes the
+    /// server during the level unload. Plugin logic is already frozen by FinishVote.
     /// </summary>
     private void ChangeMap(string mapName)
     {
@@ -257,10 +263,39 @@ public class MapVoteService
             return;
         }
 
-        // Freeze the plugin BEFORE the changelevel so nothing runs during unload.
-        OnBeginMapChange?.Invoke();
+        RemoveDangerousEntities();
 
         Utils.Logger.LogInfo("MapVote", $"Executing: changelevel {mapName}");
-        Server.ExecuteCommand($"changelevel {mapName}");
+        // Defer one frame so the entity removals above are processed before unload.
+        Server.NextFrame(() => Server.ExecuteCommand($"changelevel {mapName}"));
+    }
+
+    /// <summary>
+    /// Removes planted C4 and any in-flight projectiles so the engine doesn't fault
+    /// on a live timed entity during the level change.
+    /// </summary>
+    private static void RemoveDangerousEntities()
+    {
+        try
+        {
+            foreach (var bomb in Utilities.FindAllEntitiesByDesignerName<CPlantedC4>("planted_c4"))
+            {
+                if (bomb is { IsValid: true }) bomb.Remove();
+            }
+
+            foreach (var designer in new[] { "hegrenade_projectile", "molotov_projectile",
+                         "smokegrenade_projectile", "flashbang_projectile", "decoy_projectile",
+                         "inferno" })
+            {
+                foreach (var ent in Utilities.FindAllEntitiesByDesignerName<CBaseEntity>(designer))
+                {
+                    if (ent is { IsValid: true }) ent.Remove();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Utils.Logger.LogWarning("MapVote", $"Entity cleanup before changelevel failed: {ex.Message}");
+        }
     }
 }
