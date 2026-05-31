@@ -34,7 +34,9 @@ public class WeaponAllocationService
         var team = player.Team;
         if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist) return;
 
-        player.RemoveWeapons();
+        // NOTE: weapons are already removed by the caller (OnRoundPostStart) before
+        // the bomb is handed to the planter, so we must NOT call RemoveWeapons() here
+        // or we would strip the bomb back off the planter.
 
         if (_settings.GiveArmor)
         {
@@ -43,7 +45,7 @@ public class WeaponAllocationService
 
         if (team == CsTeam.CounterTerrorist && _settings.GiveDefuserToCt)
         {
-            player.GiveNamedItem("item_defuser");
+            GiveDefuser(player);
         }
 
         var primary = ChoosePrimary(player.SteamID, team);
@@ -109,6 +111,15 @@ public class WeaponAllocationService
         foreach (var grenade in pool.OrderBy(_ => _random.Next()).Take(count))
         {
             player.GiveNamedItem(grenade);
+        }
+    }
+
+    private static void GiveDefuser(CCSPlayerController player)
+    {
+        var pawn = player.PlayerPawn.Value;
+        if (pawn is { IsValid: true } && pawn.ItemServices != null)
+        {
+            new CCSPlayer_ItemServices(pawn.ItemServices.Handle).HasDefuser = true;
         }
     }
 

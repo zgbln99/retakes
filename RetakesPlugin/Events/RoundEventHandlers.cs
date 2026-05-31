@@ -177,8 +177,18 @@ public class RoundEventHandlers
 
             if (_enableFallbackAllocation)
             {
-                Logger.LogDebug("Round", $"Asignando armas a {player.PlayerName} (fallback allocation habilitado)");
-                _allocationService.AllocatePlayer(player);
+                // Use the built-in weapon allocator (random + !guns preferences) when it
+                // is enabled; otherwise fall back to the original hard-coded allocation.
+                if (_plugin.WeaponAllocation is { } weaponAllocation && _plugin.Config.Weapon.IsEnabled)
+                {
+                    Logger.LogDebug("Round", $"Allocating weapons to {player.PlayerName} (built-in allocator)");
+                    weaponAllocation.Allocate(player);
+                }
+                else
+                {
+                    Logger.LogDebug("Round", $"Allocating weapons to {player.PlayerName} (default allocation)");
+                    _allocationService.AllocatePlayer(player);
+                }
             }
             else
             {
