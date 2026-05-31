@@ -361,6 +361,14 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             Open = playerMenu.Open
         });
 
+        // Fun commands submenu (god/hp/freeze/noclip/gravity/speed/burn/respawn).
+        var funCommandsMenu = new AdminFunCommandsMenu(_menuService!);
+        _adminMenuService.RegisterSubmenu(new AdminSubmenu
+        {
+            DisplayName = "Fun Commands (god/noclip/freeze/...)",
+            Open = funCommandsMenu.Open
+        });
+
         // Change map now submenu (direct changelevel, freezes plugin first).
         if (_mapVoteService != null)
         {
