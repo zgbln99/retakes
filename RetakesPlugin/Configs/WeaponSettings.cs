@@ -55,9 +55,13 @@ public class WeaponSettings
     [JsonPropertyName("GrenadeHardCap")]
     public int GrenadeHardCap { get; set; } = 3;
 
-    /// <summary>Allow the AWP to appear in random allocation / be picked.</summary>
+    /// <summary>Allow snipers (AWP/SSG) in random allocation / preferences.</summary>
     [JsonPropertyName("AllowSnipers")]
     public bool AllowSnipers { get; set; } = true;
+
+    /// <summary>Allow the SSG 08 (scout) specifically. When false the scout is never given.</summary>
+    [JsonPropertyName("AllowScout")]
+    public bool AllowScout { get; set; } = true;
 
     /// <summary>Probability (0..1) of randomly receiving a sniper when no rifle preference is set.</summary>
     [JsonPropertyName("SniperChance")]

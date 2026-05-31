@@ -104,7 +104,8 @@ const CFG_KEYS = new Set([
   'mapvote.allowrtv', 'autoendvote.enabled', 'fun.enabled',
   'lucky.enabled', 'lucky.chance', 'lucky.minplayers',
   'pistol.enabled', 'pistol.everyx', 'pistol.minplayers',
-  'endscreen.enabled', 'stattrak.enabled'
+  'endscreen.enabled', 'stattrak.enabled',
+  'weapon.allowscout', 'damagereport.enabled'
 ]);
 
 app.post('/api/setcfg', async (req, res) => {

@@ -59,11 +59,14 @@ public class BaseConfigs : BasePluginConfig
     [JsonPropertyName("EndGameScreenSettings")]
     public EndGameScreenSettings EndGameScreen { get; set; } = new();
 
+    [JsonPropertyName("DamageReportSettings")]
+    public DamageReportSettings DamageReport { get; set; } = new();
+
     [JsonPropertyName("DebugSettings")]
     public DebugSettings Debug { get; set; } = new();
 
     [JsonPropertyName("ConfigVersion")]
-    public override int Version { get; set; } = 11;
+    public override int Version { get; set; } = 12;
 }
 
 public class DebugSettings

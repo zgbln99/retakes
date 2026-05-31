@@ -72,6 +72,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private RemoteControlService? _remoteControlService;
     private SpecialRoundsService? _specialRoundsService;
     private EndGameScreenService? _endGameScreenService;
+    private DamageReportService? _damageReportService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -262,6 +263,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         // End-of-match summary screen (MVP / top fragger / ADR / clutches / next map).
         _endGameScreenService = new EndGameScreenService(this, Config.EndGameScreen);
+        // FaceIt-style per-round damage report.
+        _damageReportService = new DamageReportService(Config.DamageReport);
         RegisterEventHandler<EventPlayerHurt>(OnPlayerHurt);
 
         // Remote control bridge (web panel on a VPS via the shared MySQL database).
@@ -396,6 +399,22 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             DisplayName = "StatTrak (liczniki broni)",
             Get = () => Config.Stats.StatTrak.Enabled,
             Set = value => Config.Stats.StatTrak.Enabled = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "scout",
+            DisplayName = "Scout / SSG 08 dozwolony",
+            Get = () => Config.Weapon.AllowScout,
+            Set = value => Config.Weapon.AllowScout = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "damagereport",
+            DisplayName = "Raport obrażeń (po rundzie)",
+            Get = () => Config.DamageReport.Enabled,
+            Set = value => Config.DamageReport.Enabled = value
         });
 
         // Weapon-set submenu (force a global loadout / back to random).
@@ -678,6 +697,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _autoEndMapVoteService?.OnRoundStart();
         _specialRoundsService?.OnRoundStart();
         _endGameScreenService?.OnRoundStart();
+        _damageReportService?.Reset();
 
         // Re-apply the gravity cvar for the active fun mode (resets on map change).
         if (_adminFunModeMenu != null && _weaponAllocationService != null)
@@ -707,6 +727,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _statsService?.OnRoundEnd();
         _specialRoundsService?.OnRoundEnd();
         _endGameScreenService?.OnRoundEnd((CounterStrikeSharp.API.Modules.Utils.CsTeam)@event.Winner);
+        _damageReportService?.PrintReports();
         // Apply a pending auto-vote map change now that the round has ended.
         _autoEndMapVoteService?.OnRoundEnd();
         return _roundEventHandlers?.OnRoundEnd(@event, info) ?? HookResult.Continue;
@@ -743,6 +764,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     {
         if (_isChangingMap) return HookResult.Continue;
         _endGameScreenService?.OnPlayerHurt(@event);
+        _damageReportService?.OnPlayerHurt(@event);
         return HookResult.Continue;
     }
 
@@ -896,6 +918,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             case "pistol.minplayers": Config.SpecialRounds.Pistol.MinPlayers = I(); break;
             case "endscreen.enabled": Config.EndGameScreen.Enabled = B(); break;
             case "stattrak.enabled": Config.Stats.StatTrak.Enabled = B(); break;
+            case "weapon.allowscout": Config.Weapon.AllowScout = B(); break;
+            case "damagereport.enabled": Config.DamageReport.Enabled = B(); break;
             default: applied = false; break;
         }
 

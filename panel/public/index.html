@@ -95,6 +95,12 @@
         <div class="row"><span>Granaty min/max</span>
           <input id="gmin" style="width:50px" placeholder="1"><input id="gmax" style="width:50px" placeholder="2">
           <button class="btn" onclick="cfg('weapon.mingrenades',val('gmin'));cfg('weapon.maxgrenades',val('gmax'))">Ustaw</button></div>
+        <div class="row"><span>Scout / SSG 08 dozwolony</span>
+          <button class="btn sec" onclick="cfg('weapon.allowscout','1')">ON</button>
+          <button class="btn sec" onclick="cfg('weapon.allowscout','0')">OFF</button></div>
+        <div class="row"><span>Raport obrażeń (po rundzie)</span>
+          <button class="btn sec" onclick="cfg('damagereport.enabled','1')">ON</button>
+          <button class="btn sec" onclick="cfg('damagereport.enabled','0')">OFF</button></div>
       </div>
     </section>
 

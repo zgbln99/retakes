@@ -130,19 +130,26 @@ public class WeaponAllocationService
         var rifles = team == CsTeam.Terrorist ? _settings.TerroristRifles : _settings.CounterTerroristRifles;
         var riflePref = team == CsTeam.Terrorist ? pref?.TerroristRifle : pref?.CounterTerroristRifle;
 
-        if (_settings.AllowSnipers && pref?.PreferSniper == true && _settings.Snipers.Count > 0)
+        // Sniper pool with the scout removed when AllowScout is off.
+        var snipers = _settings.Snipers
+            .Where(s => _settings.AllowScout || s != "weapon_ssg08")
+            .ToList();
+
+        if (_settings.AllowSnipers && pref?.PreferSniper == true && snipers.Count > 0)
         {
-            return Pick(_settings.Snipers);
+            return Pick(snipers);
         }
 
         if (riflePref != null && rifles.Contains(riflePref))
         {
-            return riflePref;
+            // A preferred scout is denied when AllowScout is off → fall through to a rifle.
+            if (!(riflePref == "weapon_ssg08" && !_settings.AllowScout))
+                return riflePref;
         }
 
-        if (_settings.AllowSnipers && _settings.Snipers.Count > 0 && _random.NextDouble() < _settings.SniperChance)
+        if (_settings.AllowSnipers && snipers.Count > 0 && _random.NextDouble() < _settings.SniperChance)
         {
-            return Pick(_settings.Snipers);
+            return Pick(snipers);
         }
 
         return rifles.Count > 0 ? Pick(rifles) : null;
