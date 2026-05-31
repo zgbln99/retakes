@@ -43,6 +43,7 @@ public class MapVoteService
     /// <summary>Opens the end-of-match map vote (a team won the match).</summary>
     public void OnMatchEnd()
     {
+        Utils.Logger.LogInfo("MapVote", $"OnMatchEnd: enabled={_settings.IsEnabled}, startAtMatchEnd={_settings.StartAtMatchEnd}, voteActive={_voteActive}");
         if (!_settings.IsEnabled || !_settings.StartAtMatchEnd || _voteActive) return;
 
         Server.PrintToChatAll($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Koniec gry — głosowanie na następną mapę!");
@@ -51,6 +52,8 @@ public class MapVoteService
 
     public void OnRtv(CCSPlayerController player)
     {
+        Utils.Logger.LogInfo("MapVote", $"OnRtv by {player.PlayerName}: enabled={_settings.IsEnabled}, allowRtv={_settings.AllowRtv}, voteActive={_voteActive}");
+
         if (!_settings.IsEnabled || !_settings.AllowRtv)
         {
             player.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Głosowanie !rtv jest wyłączone (mapa zmienia się na końcu gry).");
@@ -124,6 +127,15 @@ public class MapVoteService
         _votes.Clear();
         _candidates = PickCandidates();
 
+        Utils.Logger.LogInfo("MapVote", $"StartVote: {_candidates.Count} candidates: {string.Join(", ", _candidates)}");
+
+        if (_candidates.Count == 0)
+        {
+            Utils.Logger.LogWarning("MapVote", "No candidate maps configured — aborting vote. Check MapVoteSettings.Maps.");
+            _voteActive = false;
+            return;
+        }
+
         Server.PrintToChatAll($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Rozpoczęto głosowanie na mapę!");
 
         foreach (var player in Utilities.GetPlayers())
@@ -135,6 +147,7 @@ public class MapVoteService
         }
 
         _plugin.AddTimer(Math.Max(5.0f, _settings.VoteDurationSeconds), FinishVote);
+        Utils.Logger.LogInfo("MapVote", $"Vote menu opened, finishing in {Math.Max(5.0f, _settings.VoteDurationSeconds)}s");
     }
 
     private List<string> PickCandidates()
@@ -161,18 +174,26 @@ public class MapVoteService
             var captured = map;
             menu.AddMenuOption(captured, (p, _) =>
             {
-                if (!p.IsValid) return;
-                _votes[p.SteamID] = captured;
-                p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Zagłosowałeś na: {ChatColors.Gold}{captured}");
-
-                // Close on the next frame — closing from inside the option callback
-                // can crash the server (menu re-entrancy).
-                var steamId = p.SteamID;
-                _plugin.AddTimer(0.1f, () =>
+                try
                 {
-                    var target = Utilities.GetPlayers().FirstOrDefault(x => x.IsValid && x.SteamID == steamId);
-                    if (target != null) MenuManager.CloseActiveMenu(target);
-                });
+                    if (!p.IsValid) return;
+                    _votes[p.SteamID] = captured;
+                    Utils.Logger.LogInfo("MapVote", $"{p.PlayerName} voted for {captured}");
+                    p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Zagłosowałeś na: {ChatColors.Gold}{captured}");
+
+                    // Close on the next frame — closing from inside the option callback
+                    // can crash the server (menu re-entrancy).
+                    var steamId = p.SteamID;
+                    _plugin.AddTimer(0.1f, () =>
+                    {
+                        var target = Utilities.GetPlayers().FirstOrDefault(x => x.IsValid && x.SteamID == steamId);
+                        if (target != null) MenuManager.CloseActiveMenu(target);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Utils.Logger.LogException("MapVote", ex);
+                }
             });
         }
 
@@ -181,13 +202,14 @@ public class MapVoteService
 
     private void FinishVote()
     {
+        Utils.Logger.LogInfo("MapVote", $"FinishVote: voteActive={_voteActive}, votes={_votes.Count}");
         if (!_voteActive) return;
         _voteActive = false;
 
         string winner;
         if (_votes.Count == 0)
         {
-            // Nobody voted — pick a random candidate so the !rtv still does something.
+            // Nobody voted — pick a random candidate so the vote still does something.
             winner = _candidates.Count > 0 ? _candidates[_random.Next(_candidates.Count)] : Server.MapName;
         }
         else
@@ -198,6 +220,8 @@ public class MapVoteService
                 .ThenBy(_ => _random.Next())
                 .First().Key;
         }
+
+        Utils.Logger.LogInfo("MapVote", $"Winner: {winner} — changing in {(int)_settings.ChangeDelaySeconds}s");
 
         Server.PrintToChatAll(
             $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wygrała mapa: {ChatColors.Gold}{winner}{ChatColors.White}. Zmiana za {(int)_settings.ChangeDelaySeconds}s...");
@@ -222,6 +246,7 @@ public class MapVoteService
             return;
         }
 
+        Utils.Logger.LogInfo("MapVote", $"Executing: changelevel {mapName}");
         Server.ExecuteCommand($"changelevel {mapName}");
     }
 }
