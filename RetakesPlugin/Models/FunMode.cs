@@ -22,6 +22,15 @@ public enum FunMode
     /// <summary>Everyone gets a scout/SSG08 (+knife).</summary>
     ScoutsOnly,
 
+    /// <summary>Everyone gets an AWP (+knife).</summary>
+    AwpOnly,
+
+    /// <summary>Everyone gets an AK-47 (+knife).</summary>
+    AkOnly,
+
+    /// <summary>Everyone gets a random pistol (+knife).</summary>
+    PistolsOnly,
+
     /// <summary>Normal weapons, but low gravity for everyone.</summary>
     LowGravity
 }
@@ -35,11 +44,15 @@ public static class FunModeExtensions
         FunMode.DeagleOnly => "Tylko Deagle",
         FunMode.HeWar => "Wojna granatami (HE)",
         FunMode.ScoutsOnly => "Tylko Scout",
+        FunMode.AwpOnly => "Tylko AWP",
+        FunMode.AkOnly => "Tylko AK-47",
+        FunMode.PistolsOnly => "Tylko pistolety",
         FunMode.LowGravity => "Niska grawitacja",
         _ => mode.ToString()
     };
 
     /// <summary>True if the mode changes weapon allocation (handled by the allocator).</summary>
     public static bool IsWeaponMode(this FunMode mode) =>
-        mode is FunMode.KnivesOnly or FunMode.DeagleOnly or FunMode.HeWar or FunMode.ScoutsOnly;
+        mode is FunMode.KnivesOnly or FunMode.DeagleOnly or FunMode.HeWar
+            or FunMode.ScoutsOnly or FunMode.AwpOnly or FunMode.AkOnly or FunMode.PistolsOnly;
 }

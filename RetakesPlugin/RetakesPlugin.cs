@@ -238,6 +238,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         //   css_rcon_player <steamid64> <action>   (e.g. css_rcon_player 7656... god)
         AddCommand("css_rcon_player", "Remote per-player action (used by the web panel).", OnRconPlayerCommand);
 
+        // Remote config edit, queued by the web panel as:
+        //   css_rcon_setcfg <key> <value>   (e.g. css_rcon_setcfg weapon.sniperchance 0.1)
+        AddCommand("css_rcon_setcfg", "Remote config edit (used by the web panel).", OnRconSetCfgCommand);
+
         // Remote control bridge (web panel on a VPS via the shared MySQL database).
         _remoteControlService = new RemoteControlService(this, Config.RemoteControl, Config.Stats.Database, () => _isChangingMap);
         _remoteControlService.Initialize();
@@ -758,6 +762,51 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         var ok = Services.PlayerActions.Apply(steamId, action, out var message);
         Utils.Logger.LogInfo("Remote", ok ? $"Player action: {message}" : $"Player action failed: {message}");
+    }
+
+    // css_rcon_setcfg <key> <value> — queued by the web panel; edits a curated set
+    // of live-tunable config fields in memory. Console/remote only.
+    private void OnRconSetCfgCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player != null && player.IsValid) return;
+        if (command.ArgCount < 3) return;
+
+        var key = command.GetArg(1).ToLowerInvariant();
+        var value = command.GetArg(2);
+        var applied = true;
+
+        bool B() => value is "1" or "true" or "on" or "yes";
+        double D() => double.TryParse(value, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0;
+        int I() => int.TryParse(value, out var i) ? i : 0;
+
+        switch (key)
+        {
+            // Instadefuse
+            case "instadefuse.enabled": Config.Instadefuse.IsEnabled = B(); break;
+            // Weapons
+            case "weapon.enabled": Config.Weapon.IsEnabled = B(); break;
+            case "weapon.allowpreferences": Config.Weapon.AllowPreferences = B(); break;
+            case "weapon.allowsnipers": Config.Weapon.AllowSnipers = B(); break;
+            case "weapon.sniperchance": Config.Weapon.SniperChance = D(); break;
+            case "weapon.mingrenades": Config.Weapon.MinGrenades = I(); break;
+            case "weapon.maxgrenades": Config.Weapon.MaxGrenades = I(); break;
+            case "weapon.lonegrenades": Config.Weapon.LonePlayerExtraGrenades = I(); break;
+            // Stats / HUD / messages
+            case "stats.enabled": Config.Stats.IsEnabled = B(); break;
+            case "hud.enabled": Config.Hud.IsEnabled = B(); break;
+            case "automessage.enabled": Config.AutoMessage.IsEnabled = B(); break;
+            // Map votes
+            case "mapvote.allowrtv": Config.MapVote.AllowRtv = B(); if (B()) Config.MapVote.IsEnabled = true; break;
+            case "autoendvote.enabled": Config.AutoEndMapVote.Enabled = B(); break;
+            // Fun
+            case "fun.enabled": Config.Fun.IsEnabled = B(); break;
+            default: applied = false; break;
+        }
+
+        Utils.Logger.LogInfo("Remote", applied
+            ? $"Config set: {key} = {value}"
+            : $"Config key not recognised: {key}");
     }
 
     private HookResult OnCommandJoinTeam(CCSPlayerController? player, CommandInfo commandInfo)

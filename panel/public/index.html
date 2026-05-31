@@ -53,6 +53,39 @@
     </div>
 
     <div class="card">
+      <h2>Ustawienia (na żywo)</h2>
+      <div class="row"><span style="flex:1">Instadefuse</span>
+        <button class="sec" onclick="cfg('instadefuse.enabled','1')">ON</button>
+        <button class="sec" onclick="cfg('instadefuse.enabled','0')">OFF</button></div>
+      <div class="row"><span style="flex:1">Statystyki</span>
+        <button class="sec" onclick="cfg('stats.enabled','1')">ON</button>
+        <button class="sec" onclick="cfg('stats.enabled','0')">OFF</button></div>
+      <div class="row"><span style="flex:1">HUD (bomba/serie)</span>
+        <button class="sec" onclick="cfg('hud.enabled','1')">ON</button>
+        <button class="sec" onclick="cfg('hud.enabled','0')">OFF</button></div>
+      <div class="row"><span style="flex:1">Auto-wiadomości</span>
+        <button class="sec" onclick="cfg('automessage.enabled','1')">ON</button>
+        <button class="sec" onclick="cfg('automessage.enabled','0')">OFF</button></div>
+      <div class="row"><span style="flex:1">!rtv (w trakcie)</span>
+        <button class="sec" onclick="cfg('mapvote.allowrtv','1')">ON</button>
+        <button class="sec" onclick="cfg('mapvote.allowrtv','0')">OFF</button></div>
+      <div class="row"><span style="flex:1">Głosowanie po meczu</span>
+        <button class="sec" onclick="cfg('autoendvote.enabled','1')">ON</button>
+        <button class="sec" onclick="cfg('autoendvote.enabled','0')">OFF</button></div>
+      <div class="row"><span style="flex:1">Snajperki</span>
+        <button class="sec" onclick="cfg('weapon.allowsnipers','1')">ON</button>
+        <button class="sec" onclick="cfg('weapon.allowsnipers','0')">OFF</button></div>
+      <div class="row"><span style="flex:1">Szansa na snajperkę</span>
+        <input id="sniperchance" style="width:70px" placeholder="0.05">
+        <button onclick="cfg('weapon.sniperchance', document.getElementById('sniperchance').value)">Ustaw</button></div>
+      <div class="row"><span style="flex:1">Granaty min/max</span>
+        <input id="gmin" style="width:50px" placeholder="1">
+        <input id="gmax" style="width:50px" placeholder="2">
+        <button onclick="cfg('weapon.mingrenades',document.getElementById('gmin').value);cfg('weapon.maxgrenades',document.getElementById('gmax').value)">Ustaw</button></div>
+      <p class="small">Zmiany działają od następnej rundy. Uwaga: nie zapisują się do pliku configu (reset po restarcie serwera).</p>
+    </div>
+
+    <div class="card">
       <h2>Dowolna komenda</h2>
       <div class="row">
         <input id="cmd" placeholder="np. css_scramble / changelevel de_nuke" style="flex:1">
@@ -90,6 +123,7 @@
     function cmd(c) { post('/api/command', { command: c }).then(refreshHistory); }
     function sendCmd() { const v = document.getElementById('cmd').value.trim(); if (v) { post('/api/command',{command:v}).then(()=>{document.getElementById('cmd').value='';refreshHistory();}); } }
     function changeMap() { post('/api/changemap', { map: document.getElementById('mapSel').value }).then(refreshHistory); }
+    function cfg(key, value) { if (value===''||value==null) return; post('/api/setcfg', { key, value }).then(refreshHistory); }
 
     async function refreshStatus() {
       const d = await api('/api/status'); if (!d) return;

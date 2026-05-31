@@ -68,6 +68,12 @@ Baza brana jest z `StatsSettings.Database` (te same dane MySQL).
 ## Funkcje panelu
 
 - Status serwera na żywo (mapa, gracze)
+- **Zarządzanie graczami**: lista online + akcje per gracz (kick/slay/respawn,
+  move T/CT/Spec, god/freeze/noclip/grav/speed/wielkość)
+- **Ustawienia na żywo**: włącz/wyłącz instadefuse, statystyki, HUD,
+  auto-wiadomości, !rtv, głosowanie po meczu, snajperki; ustaw szansę na
+  snajperkę i liczbę granatów (działa od następnej rundy; nie zapisuje się do
+  pliku — reset po restarcie serwera)
 - Zmiana mapy, scramble, force bombsite, restart
 - Dowolna komenda (przez kolejkę)
 - Ranking graczy (TOP, tylko odczyt)

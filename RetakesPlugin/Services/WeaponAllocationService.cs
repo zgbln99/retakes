@@ -228,6 +228,15 @@ public class WeaponAllocationService
             case FunMode.ScoutsOnly:
                 player.GiveNamedItem("weapon_ssg08");
                 break;
+            case FunMode.AwpOnly:
+                player.GiveNamedItem("weapon_awp");
+                break;
+            case FunMode.AkOnly:
+                player.GiveNamedItem("weapon_ak47");
+                break;
+            case FunMode.PistolsOnly:
+                player.GiveNamedItem(player.Team == CsTeam.Terrorist ? "weapon_glock" : "weapon_usp_silencer");
+                break;
         }
     }
 

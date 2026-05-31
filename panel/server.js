@@ -87,6 +87,24 @@ const PLAYER_ACTIONS = new Set([
   'small', 'big', 'giant', 'normsize'
 ]);
 
+// Curated, live-tunable config keys (must match the plugin's css_rcon_setcfg).
+const CFG_KEYS = new Set([
+  'instadefuse.enabled',
+  'weapon.enabled', 'weapon.allowpreferences', 'weapon.allowsnipers',
+  'weapon.sniperchance', 'weapon.mingrenades', 'weapon.maxgrenades', 'weapon.lonegrenades',
+  'stats.enabled', 'hud.enabled', 'automessage.enabled',
+  'mapvote.allowrtv', 'autoendvote.enabled', 'fun.enabled'
+]);
+
+app.post('/api/setcfg', async (req, res) => {
+  const key = String(req.body.key || '').trim().toLowerCase();
+  const value = String(req.body.value ?? '').trim();
+  if (!CFG_KEYS.has(key)) return res.status(400).json({ error: 'unknown key' });
+  if (!/^[\w.\-]{1,16}$/.test(value)) return res.status(400).json({ error: 'bad value' });
+  try { await queueCommand(`css_rcon_setcfg ${key} ${value}`); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/player', async (req, res) => {
   const steamId = String(req.body.steamId || '').trim();
   const action = String(req.body.action || '').trim().toLowerCase();
