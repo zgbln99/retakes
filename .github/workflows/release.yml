@@ -1,0 +1,73 @@
+name: Release Retakes
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build RetakesPluginShared
+        run: dotnet build RetakesPluginShared/RetakesPluginShared.csproj -c Release
+
+      - name: Build RetakesPlugin
+        run: dotnet build RetakesPlugin/RetakesPlugin.csproj -c Release
+
+      - name: Assemble release structure
+        run: |
+          P=output/addons/counterstrikesharp/plugins/RetakesPlugin
+          S=output/addons/counterstrikesharp/shared/RetakesPluginShared
+          mkdir -p "$P" "$S"
+
+          cp ./RetakesPlugin/bin/Release/net8.0/RetakesPlugin.dll "$P/"
+          cp ./RetakesPlugin/bin/Release/net8.0/RetakesPlugin.pdb "$P/"
+          # Runtime dependency for the MySQL-backed stats module (not provided by the server)
+          cp ./RetakesPlugin/bin/Release/net8.0/MySqlConnector.dll "$P/"
+          cp -r ./RetakesPlugin/map_config "$P/"
+          cp -r ./RetakesPlugin/lang "$P/"
+
+          cp ./RetakesPluginShared/bin/Release/net8.0/RetakesPluginShared.dll "$S/"
+          cp ./RetakesPluginShared/bin/Release/net8.0/RetakesPluginShared.pdb "$S/"
+          cp ./RetakesPluginShared/bin/Release/net8.0/RetakesPluginShared.deps.json "$S/"
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release zip
+        run: |
+          cd output
+          zip -r "../Retakes-${{ steps.tag.outputs.name }}.zip" ./addons
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Retakes ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          files: Retakes-${{ steps.tag.outputs.name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

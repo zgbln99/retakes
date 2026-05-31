@@ -8,9 +8,19 @@
   <ItemGroup>
     <PackageReference Include="CounterStrikeSharp.API" Version="1.0.367" />
     <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.8" />
-    <PackageReference Include="MySqlConnector" Version="2.3.7" />
+    <!-- GeneratePathProperty lets us copy the runtime dll explicitly (see CopyMySqlConnector).
+         The CounterStrikeSharp.API package disables copying NuGet deps to the output, but the
+         server does NOT provide MySqlConnector, so the stats module needs it shipped alongside. -->
+    <PackageReference Include="MySqlConnector" Version="2.3.7" GeneratePathProperty="true" />
     <ProjectReference Include="..\RetakesPluginShared\RetakesPluginShared.csproj" />
   </ItemGroup>
+
+  <!-- Copy MySqlConnector.dll next to the plugin so the MySQL-backed stats module can load. -->
+  <Target Name="CopyMySqlConnector" AfterTargets="Build">
+    <Copy SourceFiles="$(PkgMySqlConnector)\lib\net8.0\MySqlConnector.dll"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition=" '$(CopyPath)' != '' ">
     <Exec Command="copy &quot;$(TargetPath)&quot; &quot;$(CopyPath)&quot; " />
