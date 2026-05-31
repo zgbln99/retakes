@@ -18,6 +18,7 @@ public class AdminMenuService
     private readonly AdminMenuSettings _settings;
     private readonly List<FeatureToggle> _toggles = new();
     private readonly List<AdminAction> _actions = new();
+    private readonly List<AdminSubmenu> _submenus = new();
 
     public AdminMenuService(BasePlugin plugin, AdminMenuSettings settings)
     {
@@ -27,6 +28,7 @@ public class AdminMenuService
 
     public void RegisterToggle(FeatureToggle toggle) => _toggles.Add(toggle);
     public void RegisterAction(AdminAction action) => _actions.Add(action);
+    public void RegisterSubmenu(AdminSubmenu submenu) => _submenus.Add(submenu);
 
     public bool CanUse(CCSPlayerController player)
     {
@@ -46,6 +48,11 @@ public class AdminMenuService
         if (_actions.Count > 0)
         {
             menu.AddMenuOption("Akcje rundy", (p, _) => OpenActionsMenu(p));
+        }
+
+        foreach (var submenu in _submenus)
+        {
+            menu.AddMenuOption(submenu.DisplayName, (p, _) => submenu.Open(p));
         }
 
         MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
@@ -92,7 +99,15 @@ public class AdminMenuService
         {
             menu.AddMenuOption(action.DisplayName, (p, _) =>
             {
-                p.ExecuteClientCommandFromServer(action.Command);
+                if (action.Execute != null)
+                {
+                    action.Execute(p);
+                }
+                else if (action.Command != null)
+                {
+                    p.ExecuteClientCommandFromServer(action.Command);
+                }
+
                 p.PrintToChat(
                     $" {ChatColors.Green}[Retakes]{ChatColors.White} Wykonano: {ChatColors.Green}{action.DisplayName}");
             });

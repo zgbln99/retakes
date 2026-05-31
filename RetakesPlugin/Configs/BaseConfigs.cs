@@ -35,6 +35,9 @@ public class BaseConfigs : BasePluginConfig
     [JsonPropertyName("StatsSettings")]
     public StatsSettings Stats { get; set; } = new();
 
+    [JsonPropertyName("MapVoteSettings")]
+    public MapVoteSettings MapVote { get; set; } = new();
+
     [JsonPropertyName("DebugSettings")]
     public DebugSettings Debug { get; set; } = new();
 

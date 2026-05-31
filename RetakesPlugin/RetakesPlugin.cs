@@ -63,6 +63,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private AdminMenuService? _adminMenuService;
     private WeaponAllocationService? _weaponAllocationService;
     private StatsService? _statsService;
+    private MapVoteService? _mapVoteService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -163,6 +164,12 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         AddCommand("css_stats", "Show your PvP stats.", rankCommand.OnCommand);
         AddCommand("css_top", "Show the PvP leaderboard.", topCommand.OnCommand);
 
+        // Player-driven map vote (rock the vote)
+        _mapVoteService = new MapVoteService(this, Config.MapVote, _random);
+        var rtvCommand = new RtvCommand(_mapVoteService);
+        AddCommand("css_rtv", "Rock the vote — request a map change.", rtvCommand.OnCommand);
+        AddCommand("css_votemap", "Rock the vote — request a map change.", rtvCommand.OnCommand);
+
         // In-game admin panel (GUI) + runtime feature toggles
         SetupAdminMenu();
 
@@ -219,11 +226,39 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             Set = value => Config.Stats.IsEnabled = value
         });
 
-        // Round actions (reuse existing registered commands).
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "mapvote",
+            DisplayName = "Map vote (!rtv)",
+            Get = () => Config.MapVote.IsEnabled,
+            Set = value => Config.MapVote.IsEnabled = value
+        });
+
+        // Weapon-set submenu (force a global loadout / back to random).
+        if (_weaponAllocationService != null)
+        {
+            var weaponSetMenu = new AdminWeaponSetMenu(this, _weaponAllocationService);
+            _adminMenuService.RegisterSubmenu(new AdminSubmenu
+            {
+                DisplayName = "Wybór zestawu broni",
+                Open = weaponSetMenu.Open
+            });
+        }
+
+        // Round actions (reuse existing registered commands / direct callbacks).
         _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Scramble teams (next round)", Command = "css_scramble" });
         _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Force bombsite A", Command = "css_forcebombsite A" });
         _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Force bombsite B", Command = "css_forcebombsite B" });
         _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Stop forcing bombsite", Command = "css_forcebombsitestop" });
+
+        if (_mapVoteService != null)
+        {
+            _adminMenuService.RegisterAction(new AdminAction
+            {
+                DisplayName = "Rozpocznij głosowanie na mapę",
+                Execute = admin => _mapVoteService.ForceStartVote(admin)
+            });
+        }
 
         var adminMenuCommand = new AdminMenuCommand(_adminMenuService);
         foreach (var alias in Config.AdminMenu.OpenCommands)
@@ -241,6 +276,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     {
         Utils.Logger.LogInfo("MapStart", $"Map started: {mapName}");
 
+        _mapVoteService?.Reset();
         SpawnService.Reset();
 
         AddTimer(1.0f, ServerHelper.ExecuteRetakesConfiguration);

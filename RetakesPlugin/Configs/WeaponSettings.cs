@@ -28,8 +28,24 @@ public class WeaponSettings
     [JsonPropertyName("GiveGrenades")]
     public bool GiveGrenades { get; set; } = true;
 
-    [JsonPropertyName("MaxGrenadesPerPlayer")]
-    public int MaxGrenadesPerPlayer { get; set; } = 2;
+    /// <summary>Minimum number of grenades a player receives (random between Min and Max).</summary>
+    [JsonPropertyName("MinGrenades")]
+    public int MinGrenades { get; set; } = 1;
+
+    /// <summary>Maximum number of grenades a player receives (random between Min and Max).</summary>
+    [JsonPropertyName("MaxGrenades")]
+    public int MaxGrenades { get; set; } = 3;
+
+    /// <summary>
+    /// Extra grenades added on top of the random count when the player is the only
+    /// one alive on their team (the "lone wolf" bonus). Set to 0 to disable.
+    /// </summary>
+    [JsonPropertyName("LonePlayerExtraGrenades")]
+    public int LonePlayerExtraGrenades { get; set; } = 2;
+
+    /// <summary>Hard cap on total grenades regardless of bonuses (CS2 carries up to 4 by default).</summary>
+    [JsonPropertyName("GrenadeHardCap")]
+    public int GrenadeHardCap { get; set; } = 4;
 
     /// <summary>Allow the AWP to appear in random allocation / be picked.</summary>
     [JsonPropertyName("AllowSnipers")]
