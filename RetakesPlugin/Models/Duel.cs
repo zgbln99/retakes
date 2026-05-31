@@ -28,3 +28,26 @@ public class DuelRow
     /// <summary>Times this opponent killed the querying player.</summary>
     public int Deaths { get; set; }
 }
+
+/// <summary>
+/// A player's "nemesis" (opponent who killed them most) and "victim" (opponent
+/// they killed most), derived from their duel rows.
+/// </summary>
+public class NemesisInfo
+{
+    public DuelRow? Nemesis { get; set; }   // most deaths to this opponent
+    public DuelRow? Victim { get; set; }    // most kills on this opponent
+
+    public static NemesisInfo From(IEnumerable<DuelRow> duels)
+    {
+        var info = new NemesisInfo();
+        foreach (var d in duels)
+        {
+            if (d.Deaths > 0 && (info.Nemesis == null || d.Deaths > info.Nemesis.Deaths))
+                info.Nemesis = d;
+            if (d.Kills > 0 && (info.Victim == null || d.Kills > info.Victim.Kills))
+                info.Victim = d;
+        }
+        return info;
+    }
+}

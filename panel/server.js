@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync } from 'fs';
 
-import { queueCommand, getStatus, getTop, getCommandHistory, getPlayers, queuePlayerAction } from './db.js';
+import { queueCommand, getStatus, getTop, getCommandHistory, getPlayers, queuePlayerAction, getDuels } from './db.js';
 
 // Minimal .env loader (no extra dependency).
 try {
@@ -76,6 +76,14 @@ app.get('/api/history', async (_req, res) => {
 app.get('/api/players', async (_req, res) => {
   try {
     res.json({ players: await getPlayers() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/duels', async (req, res) => {
+  const steamId = String(req.query.steamId || '').trim();
+  if (!/^\d{5,20}$/.test(steamId)) return res.status(400).json({ error: 'bad steamId' });
+  try {
+    res.json({ duels: await getDuels(steamId) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

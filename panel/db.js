@@ -6,7 +6,8 @@ export const tables = {
   commands: `${prefix}remote_commands`,
   status: `${prefix}server_status`,
   stats: `${prefix}player_stats`,
-  players: `${prefix}server_players`
+  players: `${prefix}server_players`,
+  duels: `${prefix}duels`
 };
 
 export const serverId = process.env.SERVER_ID || 'cwelownia1';
@@ -45,7 +46,7 @@ export async function getStatus() {
 /** Top players by kills (read-only stats view). */
 export async function getTop(limit = 25) {
   const [rows] = await pool.query(
-    `SELECT name, kills, deaths, headshots, assists, rounds
+    `SELECT steam_id, name, kills, deaths, headshots, assists, rounds
      FROM \`${tables.stats}\` ORDER BY kills DESC LIMIT ?`,
     [Number(limit)]
   );
@@ -65,6 +66,23 @@ export async function getPlayers() {
 /** Queue a per-player action (executed in-game by css_rcon_player). */
 export async function queuePlayerAction(steamId, action) {
   await queueCommand(`css_rcon_player ${steamId} ${action}`);
+}
+
+/** A player's player-vs-player record (per opponent), both directions combined. */
+export async function getDuels(steamId) {
+  const [rows] = await pool.query(
+    `SELECT opp_id, MAX(opp_name) AS opp_name, SUM(my_kills) AS kills, SUM(my_deaths) AS deaths
+     FROM (
+       SELECT victim_id AS opp_id, victim_name AS opp_name, kills AS my_kills, 0 AS my_deaths
+       FROM \`${tables.duels}\` WHERE killer_id = ?
+       UNION ALL
+       SELECT killer_id AS opp_id, killer_name AS opp_name, 0 AS my_kills, kills AS my_deaths
+       FROM \`${tables.duels}\` WHERE victim_id = ?
+     ) t
+     GROUP BY opp_id ORDER BY (kills + deaths) DESC LIMIT 50`,
+    [steamId, steamId]
+  );
+  return rows;
 }
 
 /** Recent command history. */

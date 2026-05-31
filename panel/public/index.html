@@ -25,6 +25,12 @@
     th { color:#888; }
     .logout { background:#552; color:#fff; }
     .small { font-size:12px; color:#888; }
+    .clickable { cursor:pointer; }
+    .clickable:hover { background:#262626; }
+    #modal { position:fixed; inset:0; background:#000a; display:none; align-items:center; justify-content:center; }
+    #modal .box { background:var(--card); border-radius:12px; padding:20px; width:420px; max-height:80vh; overflow:auto; }
+    #modal h3 { margin:0 0 12px; color:var(--green); }
+    #modal .close { float:right; }
   </style>
 </head>
 <body>
@@ -111,6 +117,14 @@
     </div>
   </main>
 
+  <div id="modal">
+    <div class="box">
+      <button class="sec close" onclick="closeModal()">Zamknij</button>
+      <h3 id="modalTitle">Pojedynki</h3>
+      <table id="duels"><thead><tr><th>Przeciwnik</th><th>Zabójstwa</th><th>Śmierci</th><th>Bilans</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
   <script>
     async function api(path, opts) {
       const r = await fetch(path, opts);
@@ -136,8 +150,27 @@
       const d = await api('/api/top?limit=25'); if (!d) return;
       const hs = p => p.kills ? Math.round(p.headshots/p.kills*100) : 0;
       document.querySelector('#top tbody').innerHTML = d.players.map((p,i)=>
-        `<tr><td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${hs(p)}%</td></tr>`).join('');
+        `<tr class="clickable" onclick="showDuels('${p.steam_id}','${escapeHtml(p.name)}')">`+
+        `<td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${hs(p)}%</td></tr>`).join('');
     }
+
+    async function showDuels(steamId, name) {
+      const d = await api('/api/duels?steamId='+encodeURIComponent(steamId)); if (!d) return;
+      document.getElementById('modalTitle').textContent = 'Pojedynki: ' + name;
+      const body = document.querySelector('#duels tbody');
+      if (!d.duels.length) {
+        body.innerHTML = '<tr><td colspan="4" class="small">Brak danych pojedynków.</td></tr>';
+      } else {
+        body.innerHTML = d.duels.map(x=>{
+          const diff = x.kills - x.deaths;
+          const col = diff>0?'#40ff40':diff<0?'#ff5555':'#ffd000';
+          return `<tr><td>${escapeHtml(x.opp_name)}</td><td>${x.kills}</td><td>${x.deaths}</td>`+
+                 `<td style="color:${col}">${diff>0?'+':''}${diff}</td></tr>`;
+        }).join('');
+      }
+      document.getElementById('modal').style.display = 'flex';
+    }
+    function closeModal(){ document.getElementById('modal').style.display='none'; }
     async function refreshHistory() {
       const d = await api('/api/history'); if (!d) return;
       document.querySelector('#hist tbody').innerHTML = d.commands.map(c=>
@@ -161,8 +194,9 @@
       document.querySelector('#players tbody').innerHTML = d.players.map(p=>{
         const buttons = acts.map(([label,a])=>
           `<button class="sec" style="padding:4px 7px;font-size:12px" onclick="playerAction('${p.steam_id}','${a}')">${label}</button>`).join(' ');
+        const pvp = `<button style="padding:4px 7px;font-size:12px" onclick="showDuels('${p.steam_id}','${escapeHtml(p.name)}')">PvP</button> `;
         return `<tr><td>${escapeHtml(p.name)}</td><td>${TEAM[p.team]||'-'}</td>`+
-               `<td>${p.alive?'żywy':'martwy'}</td><td>${buttons}</td></tr>`;
+               `<td>${p.alive?'żywy':'martwy'}</td><td>${pvp}${buttons}</td></tr>`;
       }).join('') || '<tr><td colspan="4" class="small">Brak graczy / brak danych.</td></tr>';
     }
 
