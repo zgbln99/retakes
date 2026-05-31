@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Utils;
 using RetakesPlugin.Configs;
 using RetakesPlugin.Models;
@@ -10,16 +9,17 @@ namespace RetakesPlugin.Services;
 /// <summary>
 /// Admin submenu for selecting a symmetric fun mode (or returning to normal).
 /// The chosen mode applies to everyone equally and is announced to the server.
+/// Rendered through the shared MenuService.
 /// </summary>
 public class AdminFunModeMenu
 {
-    private readonly BasePlugin _plugin;
+    private readonly MenuService _menus;
     private readonly WeaponAllocationService _weaponService;
     private readonly FunModeSettings _settings;
 
-    public AdminFunModeMenu(BasePlugin plugin, WeaponAllocationService weaponService, FunModeSettings settings)
+    public AdminFunModeMenu(MenuService menus, WeaponAllocationService weaponService, FunModeSettings settings)
     {
-        _plugin = plugin;
+        _menus = menus;
         _weaponService = weaponService;
         _settings = settings;
     }
@@ -27,15 +27,15 @@ public class AdminFunModeMenu
     public void Open(CCSPlayerController player)
     {
         var current = _weaponService.ActiveFunMode.DisplayName();
-        var menu = new CenterHtmlMenu($"Tryb fun (teraz: {current})", _plugin);
 
-        foreach (FunMode mode in Enum.GetValues(typeof(FunMode)))
+        _menus.Show(player, $"Tryb fun (teraz: {current})", menu =>
         {
-            var captured = mode;
-            menu.AddMenuOption(mode.DisplayName(), (_, _) => Select(captured));
-        }
-
-        MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
+            foreach (FunMode mode in Enum.GetValues(typeof(FunMode)))
+            {
+                var captured = mode;
+                menu.AddOption(captured.DisplayName(), _ => Select(captured));
+            }
+        }, Open);
     }
 
     private void Select(FunMode mode)

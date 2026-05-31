@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
-using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Utils;
 using RetakesPlugin.Configs;
 using RetakesPlugin.Models;
@@ -8,21 +7,22 @@ using RetakesPlugin.Models;
 namespace RetakesPlugin.Services;
 
 /// <summary>
-/// Builds and opens the in-game admin panel (a center-screen HTML menu) and owns
-/// the registries of feature toggles and admin actions that other modules plug
-/// into. This is the "command center" the rest of the features hang off.
+/// Builds and opens the in-game admin panel and owns the registries of feature
+/// toggles and admin actions that other modules plug into. This is the "command
+/// center" the rest of the features hang off. All rendering goes through the
+/// shared <see cref="MenuService"/> (Back / Close / pagination / guards).
 /// </summary>
 public class AdminMenuService
 {
-    private readonly BasePlugin _plugin;
+    private readonly MenuService _menus;
     private readonly AdminMenuSettings _settings;
     private readonly List<FeatureToggle> _toggles = new();
     private readonly List<AdminAction> _actions = new();
     private readonly List<AdminSubmenu> _submenus = new();
 
-    public AdminMenuService(BasePlugin plugin, AdminMenuSettings settings)
+    public AdminMenuService(MenuService menus, AdminMenuSettings settings)
     {
-        _plugin = plugin;
+        _menus = menus;
         _settings = settings;
     }
 
@@ -39,80 +39,81 @@ public class AdminMenuService
         return flags.Length == 0 || AdminManager.PlayerHasPermissions(player, flags);
     }
 
-    public void OpenMainMenu(CCSPlayerController player)
+    public void OpenMainMenu(CCSPlayerController player) => _menus.OpenRoot(player, ShowMainMenu);
+
+    private void ShowMainMenu(CCSPlayerController player)
     {
-        var menu = new CenterHtmlMenu($"{ChatColors.Green}Retakes{ChatColors.White} — Panel Admina", _plugin);
-
-        menu.AddMenuOption("Funkcje (on/off)", (p, _) => OpenTogglesMenu(p));
-
-        if (_actions.Count > 0)
+        _menus.Show(player, $"{ChatColors.Green}Retakes{ChatColors.White} — Panel Admina", menu =>
         {
-            menu.AddMenuOption("Akcje rundy", (p, _) => OpenActionsMenu(p));
-        }
+            menu.AddOption("Funkcje (on/off)", ShowTogglesMenu);
 
-        foreach (var submenu in _submenus)
-        {
-            menu.AddMenuOption(submenu.DisplayName, (p, _) => submenu.Open(p));
-        }
+            if (_actions.Count > 0)
+            {
+                menu.AddOption("Akcje rundy", ShowActionsMenu);
+            }
 
-        MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
+            foreach (var submenu in _submenus)
+            {
+                var captured = submenu;
+                menu.AddOption(captured.DisplayName, p => captured.Open(p));
+            }
+        }, ShowMainMenu);
     }
 
-    private void OpenTogglesMenu(CCSPlayerController player)
+    private void ShowTogglesMenu(CCSPlayerController player)
     {
-        var menu = new CenterHtmlMenu("Funkcje (on/off)", _plugin);
-
-        if (_toggles.Count == 0)
+        _menus.Show(player, "Funkcje (on/off)", menu =>
         {
-            menu.AddMenuOption("Brak funkcji do przełączenia", (_, _) => { }, disabled: true);
-        }
-
-        foreach (var toggle in _toggles)
-        {
-            var isOn = toggle.Get();
-            var state = isOn
-                ? "<font color='#40ff40'>ON</font>"
-                : "<font color='#ff4040'>OFF</font>";
-
-            menu.AddMenuOption($"{toggle.DisplayName}: {state}", (p, _) =>
+            if (_toggles.Count == 0)
             {
-                var newValue = !toggle.Get();
-                toggle.Set(newValue);
+                menu.AddOption("Brak funkcji do przełączenia", _ => { }, disabled: true);
+            }
 
-                p.PrintToChat(
-                    $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} {toggle.DisplayName}: " +
-                    (newValue ? $"{ChatColors.Green}ON" : $"{ChatColors.Red}OFF"));
+            foreach (var toggle in _toggles)
+            {
+                var captured = toggle;
+                var state = captured.Get()
+                    ? "<font color='#40ff40'>ON</font>"
+                    : "<font color='#ff4040'>OFF</font>";
 
-                // Reopen so the state label refreshes.
-                OpenTogglesMenu(p);
-            });
-        }
+                menu.AddOption($"{captured.DisplayName}: {state}", p =>
+                {
+                    var newValue = !captured.Get();
+                    captured.Set(newValue);
 
-        MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
+                    p.PrintToChat(
+                        $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} {captured.DisplayName}: " +
+                        (newValue ? $"{ChatColors.Green}ON" : $"{ChatColors.Red}OFF"));
+
+                    // Reopen so the state label refreshes.
+                    ShowTogglesMenu(p);
+                });
+            }
+        }, ShowTogglesMenu);
     }
 
-    private void OpenActionsMenu(CCSPlayerController player)
+    private void ShowActionsMenu(CCSPlayerController player)
     {
-        var menu = new CenterHtmlMenu("Akcje rundy", _plugin);
-
-        foreach (var action in _actions)
+        _menus.Show(player, "Akcje rundy", menu =>
         {
-            menu.AddMenuOption(action.DisplayName, (p, _) =>
+            foreach (var action in _actions)
             {
-                if (action.Execute != null)
+                var captured = action;
+                menu.AddOption(captured.DisplayName, p =>
                 {
-                    action.Execute(p);
-                }
-                else if (action.Command != null)
-                {
-                    p.ExecuteClientCommandFromServer(action.Command);
-                }
+                    if (captured.Execute != null)
+                    {
+                        captured.Execute(p);
+                    }
+                    else if (captured.Command != null)
+                    {
+                        p.ExecuteClientCommandFromServer(captured.Command);
+                    }
 
-                p.PrintToChat(
-                    $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wykonano: {ChatColors.Green}{action.DisplayName}");
-            });
-        }
-
-        MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
+                    p.PrintToChat(
+                        $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wykonano: {ChatColors.Green}{captured.DisplayName}");
+                });
+            }
+        }, ShowActionsMenu);
     }
 }

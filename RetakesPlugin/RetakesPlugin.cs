@@ -67,6 +67,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private KillFeedService? _killFeedService;
     private AutoMessageService? _autoMessageService;
     private AdminFunModeMenu? _adminFunModeMenu;
+    private MenuService? _menuService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -125,6 +126,9 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // Stop periodic work that would otherwise fire during the unload.
         _statsService?.StopTimers();
         _autoMessageService?.StopTimers();
+
+        // Close any open menus so no menu callback runs during the unload.
+        _menuService?.CloseAll();
     }
     #endregion
 
@@ -185,7 +189,11 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             _weaponAllocationService.AttachRepository(
                 new MySqlWeaponPreferenceRepository(Config.Stats.Database));
         }
-        var gunsCommand = new GunsCommand(this, _weaponAllocationService);
+        // Shared menu framework (Back / Close / pagination / guards). Frozen during
+        // map changes via the same flag the event handlers use.
+        _menuService = new MenuService(this, () => _isChangingMap);
+
+        var gunsCommand = new GunsCommand(_menuService, _weaponAllocationService);
         AddCommand("css_guns", "Choose your preferred weapons.", gunsCommand.OnCommand);
         AddCommand("css_gun", "Choose your preferred weapons.", gunsCommand.OnCommand);
         AddCommand("css_weapon", "Choose your preferred weapons.", gunsCommand.OnCommand);
@@ -212,7 +220,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _autoMessageService.Initialize();
 
         // Player-driven map vote (rock the vote)
-        _mapVoteService = new MapVoteService(this, Config.MapVote, _random);
+        _mapVoteService = new MapVoteService(this, _menuService, Config.MapVote, _random);
         // Freeze all plugin logic just before the map actually changes.
         _mapVoteService.OnBeginMapChange = BeginMapChange;
         var rtvCommand = new RtvCommand(_mapVoteService);
@@ -240,7 +248,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             return;
         }
 
-        _adminMenuService = new AdminMenuService(this, Config.AdminMenu);
+        _adminMenuService = new AdminMenuService(_menuService!, Config.AdminMenu);
 
         // Feature toggles (bound live to the config object the services read from).
         _adminMenuService.RegisterToggle(new FeatureToggle
@@ -302,7 +310,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // Weapon-set submenu (force a global loadout / back to random).
         if (_weaponAllocationService != null)
         {
-            var weaponSetMenu = new AdminWeaponSetMenu(this, _weaponAllocationService);
+            var weaponSetMenu = new AdminWeaponSetMenu(_menuService!, _weaponAllocationService);
             _adminMenuService.RegisterSubmenu(new AdminSubmenu
             {
                 DisplayName = "Wybór zestawu broni",
@@ -312,7 +320,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             // Fun-mode submenu (symmetric, server-wide).
             if (Config.Fun.IsEnabled)
             {
-                _adminFunModeMenu = new AdminFunModeMenu(this, _weaponAllocationService, Config.Fun);
+                _adminFunModeMenu = new AdminFunModeMenu(_menuService!, _weaponAllocationService, Config.Fun);
                 var funMenu = _adminFunModeMenu;
                 _adminMenuService.RegisterSubmenu(new AdminSubmenu
                 {
@@ -657,6 +665,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         if (player is { IsValid: true, IsBot: false })
         {
             _statsService?.OnPlayerDisconnect(player.SteamID);
+            _menuService?.OnPlayerDisconnect(player.SteamID);
         }
 
         if (_isChangingMap) return HookResult.Continue;
@@ -718,6 +727,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     public override void Unload(bool hotReload)
     {
         Utils.Logger.LogInfo("Main", "Plugin unloading...");
+        _menuService?.CloseAll();
         base.Unload(hotReload);
     }
 }

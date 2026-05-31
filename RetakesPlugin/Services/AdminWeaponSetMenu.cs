@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace RetakesPlugin.Services;
@@ -8,41 +7,42 @@ namespace RetakesPlugin.Services;
 /// <summary>
 /// Admin submenu for forcing a global weapon set (or returning to random). The
 /// chosen set applies to everyone equally and is announced to the whole server,
-/// so it acts as a fair game mode rather than an advantage.
+/// so it acts as a fair game mode rather than an advantage. Rendered through the
+/// shared MenuService.
 /// </summary>
 public class AdminWeaponSetMenu
 {
-    private readonly BasePlugin _plugin;
+    private readonly MenuService _menus;
     private readonly WeaponAllocationService _weaponService;
 
-    public AdminWeaponSetMenu(BasePlugin plugin, WeaponAllocationService weaponService)
+    public AdminWeaponSetMenu(MenuService menus, WeaponAllocationService weaponService)
     {
-        _plugin = plugin;
+        _menus = menus;
         _weaponService = weaponService;
     }
 
     public void Open(CCSPlayerController player)
     {
         var current = _weaponService.ForcedSet?.DisplayName ?? "Losowo";
-        var menu = new CenterHtmlMenu($"Zestaw broni (teraz: {current})", _plugin);
 
-        menu.AddMenuOption("Losowo (domyślnie)", (_, _) =>
+        _menus.Show(player, $"Zestaw broni (teraz: {current})", menu =>
         {
-            _weaponService.SetForcedSet(null);
-            Announce("Losowy przydział broni");
-        });
-
-        foreach (var set in _weaponService.AvailableSets)
-        {
-            var captured = set;
-            menu.AddMenuOption(captured.DisplayName, (_, _) =>
+            menu.AddOption("Losowo (domyślnie)", _ =>
             {
-                _weaponService.SetForcedSet(captured);
-                Announce(captured.DisplayName);
+                _weaponService.SetForcedSet(null);
+                Announce("Losowy przydział broni");
             });
-        }
 
-        MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
+            foreach (var set in _weaponService.AvailableSets)
+            {
+                var captured = set;
+                menu.AddOption(captured.DisplayName, _ =>
+                {
+                    _weaponService.SetForcedSet(captured);
+                    Announce(captured.DisplayName);
+                });
+            }
+        }, Open);
     }
 
     private static void Announce(string setName)

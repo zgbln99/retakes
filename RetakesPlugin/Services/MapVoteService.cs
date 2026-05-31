@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Utils;
 using RetakesPlugin.Configs;
 
@@ -14,6 +13,7 @@ namespace RetakesPlugin.Services;
 public class MapVoteService
 {
     private readonly BasePlugin _plugin;
+    private readonly MenuService _menus;
     private readonly MapVoteSettings _settings;
     private readonly Random _random;
 
@@ -28,9 +28,10 @@ public class MapVoteService
     /// </summary>
     public Action? OnBeginMapChange { get; set; }
 
-    public MapVoteService(BasePlugin plugin, MapVoteSettings settings, Random random)
+    public MapVoteService(BasePlugin plugin, MenuService menus, MapVoteSettings settings, Random random)
     {
         _plugin = plugin;
+        _menus = menus;
         _settings = settings;
         _random = random;
     }
@@ -173,37 +174,40 @@ public class MapVoteService
 
     private void OpenVoteMenu(CCSPlayerController player)
     {
-        var menu = new CenterHtmlMenu($"{ChatColors.Green}Głosowanie na mapę{ChatColors.White}", _plugin);
+        _menus.OpenRoot(player, ShowVoteMenu);
+    }
 
-        foreach (var map in _candidates)
+    private void ShowVoteMenu(CCSPlayerController player)
+    {
+        _menus.Show(player, $"{ChatColors.Green}Głosowanie na mapę{ChatColors.White}", menu =>
         {
-            var captured = map;
-            menu.AddMenuOption(captured, (p, _) =>
+            foreach (var map in _candidates)
             {
-                try
+                var captured = map;
+                menu.AddOption(captured, p =>
                 {
-                    if (!p.IsValid) return;
-                    _votes[p.SteamID] = captured;
-                    Utils.Logger.LogInfo("MapVote", $"{p.PlayerName} voted for {captured}");
-                    p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Zagłosowałeś na: {ChatColors.Gold}{captured}");
-
-                    // Close on the next frame — closing from inside the option callback
-                    // can crash the server (menu re-entrancy).
-                    var steamId = p.SteamID;
-                    _plugin.AddTimer(0.1f, () =>
+                    try
                     {
-                        var target = Utilities.GetPlayers().FirstOrDefault(x => x.IsValid && x.SteamID == steamId);
-                        if (target != null) MenuManager.CloseActiveMenu(target);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Utils.Logger.LogException("MapVote", ex);
-                }
-            });
-        }
+                        _votes[p.SteamID] = captured;
+                        Utils.Logger.LogInfo("MapVote", $"{p.PlayerName} voted for {captured}");
+                        p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Zagłosowałeś na: {ChatColors.Gold}{captured}");
 
-        MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
+                        // Close on the next frame — closing from inside the option
+                        // callback can crash the server (menu re-entrancy).
+                        var steamId = p.SteamID;
+                        _plugin.AddTimer(0.1f, () =>
+                        {
+                            var target = Utilities.GetPlayers().FirstOrDefault(x => x.IsValid && x.SteamID == steamId);
+                            if (target != null) _menus.Close(target);
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Utils.Logger.LogException("MapVote", ex);
+                    }
+                });
+            }
+        }, ShowVoteMenu);
     }
 
     private void FinishVote()
