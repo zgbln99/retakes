@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using RetakesPlugin.Configs;
+using RetakesPlugin.Utils;
 
 namespace RetakesPlugin.Services;
 
@@ -251,9 +252,11 @@ public class MapVoteService
     }
 
     /// <summary>
-    /// Changes the map. Removes any planted bomb and live grenade/projectile
-    /// entities first — changelevel while a planted_c4 is ticking crashes the
-    /// server during the level unload. Plugin logic is already frozen by FinishVote.
+    /// Changes the map. Manual changelevel works fine, but doing it while a round
+    /// is live (auto-planted ticking C4 present) crashes the engine on unload. So
+    /// we first terminate the round and strip dangerous entities to reach the same
+    /// clean state a manual changelevel runs from, then change the map a moment
+    /// later. Plugin logic is already frozen by FinishVote.
     /// </summary>
     private void ChangeMap(string mapName)
     {
@@ -263,11 +266,28 @@ public class MapVoteService
             return;
         }
 
+        Utils.Logger.LogInfo("MapVote", "Preparing clean state (end round + remove entities)");
+
+        // 1) End the round so the engine tears the bomb down naturally.
+        try
+        {
+            GameRulesHelper.TerminateRound(
+                CounterStrikeSharp.API.Modules.Entities.Constants.RoundEndReason.RoundDraw);
+        }
+        catch (Exception ex)
+        {
+            Utils.Logger.LogWarning("MapVote", $"TerminateRound failed (continuing): {ex.Message}");
+        }
+
+        // 2) Belt-and-braces: remove any remaining planted bomb / live projectiles.
         RemoveDangerousEntities();
 
-        Utils.Logger.LogInfo("MapVote", $"Executing: changelevel {mapName}");
-        // Defer one frame so the entity removals above are processed before unload.
-        Server.NextFrame(() => Server.ExecuteCommand($"changelevel {mapName}"));
+        // 3) Change the map a short delay later, from the now-clean state.
+        _plugin.AddTimer(1.5f, () =>
+        {
+            Utils.Logger.LogInfo("MapVote", $"Executing: changelevel {mapName}");
+            Server.ExecuteCommand($"changelevel {mapName}");
+        });
     }
 
     /// <summary>
@@ -278,9 +298,10 @@ public class MapVoteService
     {
         try
         {
+            var removedBombs = 0;
             foreach (var bomb in Utilities.FindAllEntitiesByDesignerName<CPlantedC4>("planted_c4"))
             {
-                if (bomb is { IsValid: true }) bomb.Remove();
+                if (bomb is { IsValid: true }) { bomb.Remove(); removedBombs++; }
             }
 
             foreach (var designer in new[] { "hegrenade_projectile", "molotov_projectile",
@@ -292,6 +313,8 @@ public class MapVoteService
                     if (ent is { IsValid: true }) ent.Remove();
                 }
             }
+
+            Utils.Logger.LogInfo("MapVote", $"Entity cleanup done (planted bombs removed: {removedBombs})");
         }
         catch (Exception ex)
         {
