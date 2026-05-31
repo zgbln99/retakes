@@ -285,10 +285,28 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         _adminMenuService.RegisterToggle(new FeatureToggle
         {
-            Key = "mapvote",
-            DisplayName = "Głosowanie na mapę (!rtv)",
-            Get = () => Config.MapVote.IsEnabled,
-            Set = value => Config.MapVote.IsEnabled = value
+            Key = "rtv",
+            DisplayName = "Głosowanie !rtv (w trakcie gry)",
+            // Reflects whether players can use !rtv. Turning it on also ensures the
+            // map-vote subsystem itself is enabled, so the label matches reality.
+            Get = () => Config.MapVote.IsEnabled && Config.MapVote.AllowRtv,
+            Set = value =>
+            {
+                Config.MapVote.AllowRtv = value;
+                if (value) Config.MapVote.IsEnabled = true;
+            }
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "mapvote_endmatch",
+            DisplayName = "Głosowanie na mapę po meczu",
+            Get = () => Config.MapVote.IsEnabled && Config.MapVote.StartAtMatchEnd,
+            Set = value =>
+            {
+                Config.MapVote.StartAtMatchEnd = value;
+                if (value) Config.MapVote.IsEnabled = true;
+            }
         });
 
         _adminMenuService.RegisterToggle(new FeatureToggle
