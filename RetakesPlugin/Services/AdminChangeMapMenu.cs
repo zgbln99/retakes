@@ -14,12 +14,14 @@ public class AdminChangeMapMenu
 {
     private static readonly string Prefix = $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} ";
 
+    private readonly BasePlugin _plugin;
     private readonly MenuService _menus;
     private readonly MapVoteSettings _settings;
     private readonly Action _beginMapChange;
 
-    public AdminChangeMapMenu(MenuService menus, MapVoteSettings settings, Action beginMapChange)
+    public AdminChangeMapMenu(BasePlugin plugin, MenuService menus, MapVoteSettings settings, Action beginMapChange)
     {
+        _plugin = plugin;
         _menus = menus;
         _settings = settings;
         _beginMapChange = beginMapChange;
@@ -49,8 +51,13 @@ public class AdminChangeMapMenu
 
         Server.PrintToChatAll($"{Prefix}{admin.PlayerName} zmienia mapę na {ChatColors.Gold}{mapName}{ChatColors.White}...");
 
-        // Freeze plugin logic, then change on the next frame.
+        // Freeze plugin logic (stops rounds/spawns/bomb/stats and closes menus),
+        // then change the map after a short delay via NextFrame — the execution
+        // context that does not fault the engine on unload.
         _beginMapChange();
-        Server.NextFrame(() => Server.ExecuteCommand($"changelevel {mapName}"));
+        _plugin.AddTimer(3.0f, () =>
+        {
+            Server.NextFrame(() => Server.ExecuteCommand($"changelevel {mapName}"));
+        });
     }
 }

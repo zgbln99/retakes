@@ -2,7 +2,6 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using RetakesPlugin.Configs;
-using RetakesPlugin.Utils;
 
 namespace RetakesPlugin.Services;
 
@@ -239,54 +238,27 @@ public class MapVoteService
 
         _rtvVoters.Clear();
 
-        // Freeze the plugin NOW, the moment the vote ends — not at changelevel.
-        // Otherwise retakes keeps running during the delay and starts a new round
-        // (auto-planting a ticking bomb), and changelevel with a live planted_c4
-        // crashes the engine during unload.
+        // Begin the map change immediately when the vote ends:
+        //  - freeze plugin logic (_isChangingMap = true): RoundManager / SpawnManager
+        //    / BombPlant / Announcement / Stats all early-return from here on,
+        //  - close every open menu,
+        //  - stop the repeating plugin timers.
+        // (All handled by OnBeginMapChange -> BeginMapChange in the plugin.)
         OnBeginMapChange?.Invoke();
 
-        _plugin.AddTimer(Math.Max(1.0f, _settings.ChangeDelaySeconds), () =>
-        {
-            ChangeMap(winner);
-        });
-    }
-
-    /// <summary>
-    /// Changes the map. Manual changelevel works fine, but doing it while a round
-    /// is live (auto-planted ticking C4 present) crashes the engine on unload. So
-    /// we first terminate the round and strip dangerous entities to reach the same
-    /// clean state a manual changelevel runs from, then change the map a moment
-    /// later. Plugin logic is already frozen by FinishVote.
-    /// </summary>
-    private void ChangeMap(string mapName)
-    {
-        if (string.IsNullOrWhiteSpace(mapName))
-        {
-            Utils.Logger.LogWarning("MapVote", "Empty map name, skipping change");
-            return;
-        }
-
-        Utils.Logger.LogInfo("MapVote", "Preparing clean state (end round + remove entities)");
-
-        // 1) End the round so the engine tears the bomb down naturally.
-        try
-        {
-            GameRulesHelper.TerminateRound(
-                CounterStrikeSharp.API.Modules.Entities.Constants.RoundEndReason.RoundDraw);
-        }
-        catch (Exception ex)
-        {
-            Utils.Logger.LogWarning("MapVote", $"TerminateRound failed (continuing): {ex.Message}");
-        }
-
-        // 2) Belt-and-braces: remove any remaining planted bomb / live projectiles.
+        // Remove the live ticking bomb / projectiles now, while entities are valid.
         RemoveDangerousEntities();
 
-        // 3) Change the map a short delay later, from the now-clean state.
-        _plugin.AddTimer(1.5f, () =>
+        // Do NOT changelevel from inside the vote/timer callback. Wait 3s, then run
+        // the command on the main thread via NextFrame — this is the execution
+        // context that does not fault the engine on unload.
+        _plugin.AddTimer(3.0f, () =>
         {
-            Utils.Logger.LogInfo("MapVote", $"Executing: changelevel {mapName}");
-            Server.ExecuteCommand($"changelevel {mapName}");
+            Server.NextFrame(() =>
+            {
+                Utils.Logger.LogInfo("MapVote", $"Executing: changelevel {winner}");
+                Server.ExecuteCommand($"changelevel {winner}");
+            });
         });
     }
 

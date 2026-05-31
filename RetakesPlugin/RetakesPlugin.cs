@@ -359,7 +359,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // Change map now submenu (direct changelevel, freezes plugin first).
         if (_mapVoteService != null)
         {
-            var changeMapMenu = new AdminChangeMapMenu(_menuService!, Config.MapVote, BeginMapChange);
+            var changeMapMenu = new AdminChangeMapMenu(this, _menuService!, Config.MapVote, BeginMapChange);
             _adminMenuService.RegisterSubmenu(new AdminSubmenu
             {
                 DisplayName = "Zmień mapę teraz",
