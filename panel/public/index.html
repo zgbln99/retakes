@@ -110,6 +110,26 @@
     </div>
 
     <div class="card">
+      <h2>Tryby specjalne</h2>
+      <div class="row"><span style="flex:1">Lucky Round</span>
+        <button class="sec" onclick="cfg('lucky.enabled','1')">ON</button>
+        <button class="sec" onclick="cfg('lucky.enabled','0')">OFF</button></div>
+      <div class="row"><span style="flex:1">Lucky szansa (0-1)</span>
+        <input id="luckychance" style="width:70px" placeholder="0.1">
+        <button onclick="cfg('lucky.chance',document.getElementById('luckychance').value)">Ustaw</button></div>
+      <div class="row"><span style="flex:1">Pistol Round</span>
+        <button class="sec" onclick="cfg('pistol.enabled','1')">ON</button>
+        <button class="sec" onclick="cfg('pistol.enabled','0')">OFF</button></div>
+      <div class="row"><span style="flex:1">Pistol co X rund</span>
+        <input id="pistolx" style="width:70px" placeholder="5">
+        <button onclick="cfg('pistol.everyx',document.getElementById('pistolx').value)">Ustaw</button></div>
+      <div class="row" style="margin-top:8px">
+        <button onclick="forceRound('lucky')">🎲 Wymuś Lucky (nast. runda)</button>
+        <button onclick="forceRound('pistol')">🔫 Wymuś Pistol (nast. runda)</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Ranking (TOP)</h2>
       <table id="top"><thead><tr><th>#</th><th>Gracz</th><th>K</th><th>D</th><th>HS%</th></tr></thead><tbody></tbody></table>
     </div>
@@ -142,6 +162,7 @@
     function changeMap() { post('/api/changemap', { map: document.getElementById('mapSel').value }).then(refreshHistory); }
     function cfg(key, value) { if (value===''||value==null) return; post('/api/setcfg', { key, value }).then(refreshHistory); }
     function saveConfig() { post('/api/config/save', {}).then(refreshHistory); }
+    function forceRound(type) { post('/api/specialround', { type }).then(refreshHistory); }
 
     async function refreshStatus() {
       const d = await api('/api/status'); if (!d) return;

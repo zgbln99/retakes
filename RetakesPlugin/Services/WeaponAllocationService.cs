@@ -52,6 +52,15 @@ public class WeaponAllocationService
     public void SetFunMode(FunMode mode) => ActiveFunMode = mode;
     #endregion
 
+    #region Per-round override (special rounds: lucky / pistol)
+    /// <summary>
+    /// When set, this fully handles a player's loadout for the current round
+    /// (returning true), bypassing normal allocation. Set by the special-rounds
+    /// service at round start and cleared when the round ends.
+    /// </summary>
+    public Func<CCSPlayerController, bool>? RoundOverride { get; set; }
+    #endregion
+
     public void Allocate(CCSPlayerController player)
     {
         if (!_settings.IsEnabled) return;
@@ -63,6 +72,12 @@ public class WeaponAllocationService
         // NOTE: weapons are already removed by the caller (OnRoundPostStart) before
         // the bomb is handed to the planter, so we must NOT call RemoveWeapons() here
         // or we would strip the bomb back off the planter.
+
+        // A special round (lucky / pistol) fully handles the loadout for everyone.
+        if (RoundOverride != null && RoundOverride(player))
+        {
+            return;
+        }
 
         if (_settings.GiveArmor)
         {

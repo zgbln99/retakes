@@ -101,7 +101,9 @@ const CFG_KEYS = new Set([
   'weapon.enabled', 'weapon.allowpreferences', 'weapon.allowsnipers',
   'weapon.sniperchance', 'weapon.mingrenades', 'weapon.maxgrenades', 'weapon.lonegrenades',
   'stats.enabled', 'hud.enabled', 'automessage.enabled',
-  'mapvote.allowrtv', 'autoendvote.enabled', 'fun.enabled'
+  'mapvote.allowrtv', 'autoendvote.enabled', 'fun.enabled',
+  'lucky.enabled', 'lucky.chance', 'lucky.minplayers',
+  'pistol.enabled', 'pistol.everyx', 'pistol.minplayers'
 ]);
 
 app.post('/api/setcfg', async (req, res) => {
@@ -116,6 +118,14 @@ app.post('/api/setcfg', async (req, res) => {
 // Persist the live config to disk on the game server (so edits survive restart).
 app.post('/api/config/save', async (_req, res) => {
   try { await queueCommand('css_rcon_savecfg'); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Force a special round next round.
+app.post('/api/specialround', async (req, res) => {
+  const type = String(req.body.type || '').trim().toLowerCase();
+  if (type !== 'lucky' && type !== 'pistol') return res.status(400).json({ error: 'bad type' });
+  try { await queueCommand(`css_rcon_specialround ${type}`); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 

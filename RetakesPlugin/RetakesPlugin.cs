@@ -70,6 +70,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private AdminFunModeMenu? _adminFunModeMenu;
     private MenuService? _menuService;
     private RemoteControlService? _remoteControlService;
+    private SpecialRoundsService? _specialRoundsService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -245,6 +246,14 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         //   css_rcon_setcfg <key> <value>   (e.g. css_rcon_setcfg weapon.sniperchance 0.1)
         AddCommand("css_rcon_setcfg", "Remote config edit (used by the web panel).", OnRconSetCfgCommand);
         AddCommand("css_rcon_savecfg", "Persist current config to disk (used by the web panel).", OnRconSaveCfgCommand);
+        // Force a special round next: css_rcon_specialround <lucky|pistol>
+        AddCommand("css_rcon_specialround", "Force a special round next (web panel).", OnRconSpecialRoundCommand);
+
+        // Special rounds (Lucky Round / Pistol Round) — composes with the allocator.
+        if (_weaponAllocationService != null)
+        {
+            _specialRoundsService = new SpecialRoundsService(_weaponAllocationService, Config.SpecialRounds, _random);
+        }
 
         // Remote control bridge (web panel on a VPS via the shared MySQL database).
         _remoteControlService = new RemoteControlService(this, Config.RemoteControl, Config.Stats.Database, () => _isChangingMap);
@@ -348,6 +357,22 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             Set = value => Config.AutoMessage.IsEnabled = value
         });
 
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "lucky",
+            DisplayName = "Lucky Round (losowa runda)",
+            Get = () => Config.SpecialRounds.Lucky.Enabled,
+            Set = value => Config.SpecialRounds.Lucky.Enabled = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "pistol",
+            DisplayName = "Pistol Round (co X rund)",
+            Get = () => Config.SpecialRounds.Pistol.Enabled,
+            Set = value => Config.SpecialRounds.Pistol.Enabled = value
+        });
+
         // Weapon-set submenu (force a global loadout / back to random).
         if (_weaponAllocationService != null)
         {
@@ -413,6 +438,20 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             });
         }
 
+        if (_specialRoundsService != null)
+        {
+            _adminMenuService.RegisterAction(new AdminAction
+            {
+                DisplayName = "Wymuś Lucky Round (następna runda)",
+                Execute = _ => _specialRoundsService.ForceLuckyNextRound()
+            });
+            _adminMenuService.RegisterAction(new AdminAction
+            {
+                DisplayName = "Wymuś Pistol Round (następna runda)",
+                Execute = _ => _specialRoundsService.ForcePistolNextRound()
+            });
+        }
+
         var adminMenuCommand = new AdminMenuCommand(_adminMenuService);
         foreach (var alias in Config.AdminMenu.OpenCommands)
         {
@@ -434,6 +473,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         _mapVoteService?.Reset();
         _autoEndMapVoteService?.Reset();
+        _specialRoundsService?.ResetCycle();
         SpawnService.Reset();
 
         AddTimer(1.0f, ServerHelper.ExecuteRetakesConfiguration);
@@ -610,6 +650,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _killFeedService?.Reset();
         _autoMessageService?.OnRoundStart();
         _autoEndMapVoteService?.OnRoundStart();
+        _specialRoundsService?.OnRoundStart();
 
         // Re-apply the gravity cvar for the active fun mode (resets on map change).
         if (_adminFunModeMenu != null && _weaponAllocationService != null)
@@ -637,6 +678,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         if (_isChangingMap) return HookResult.Continue;
 
         _statsService?.OnRoundEnd();
+        _specialRoundsService?.OnRoundEnd();
         // Apply a pending auto-vote map change now that the round has ended.
         _autoEndMapVoteService?.OnRoundEnd();
         return _roundEventHandlers?.OnRoundEnd(@event, info) ?? HookResult.Continue;
@@ -805,6 +847,13 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             case "autoendvote.enabled": Config.AutoEndMapVote.Enabled = B(); break;
             // Fun
             case "fun.enabled": Config.Fun.IsEnabled = B(); break;
+            // Special rounds
+            case "lucky.enabled": Config.SpecialRounds.Lucky.Enabled = B(); break;
+            case "lucky.chance": Config.SpecialRounds.Lucky.Chance = D(); break;
+            case "lucky.minplayers": Config.SpecialRounds.Lucky.MinPlayers = I(); break;
+            case "pistol.enabled": Config.SpecialRounds.Pistol.Enabled = B(); break;
+            case "pistol.everyx": Config.SpecialRounds.Pistol.EveryXRounds = I(); break;
+            case "pistol.minplayers": Config.SpecialRounds.Pistol.MinPlayers = I(); break;
             default: applied = false; break;
         }
 
@@ -822,6 +871,19 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         if (player != null && player.IsValid) return;
         var ok = Services.ConfigPersistence.Save(Config);
         Utils.Logger.LogInfo("Remote", ok ? "Config saved to disk" : "Config save failed");
+    }
+
+    // css_rcon_specialround <lucky|pistol> — force a special round next round.
+    private void OnRconSpecialRoundCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player != null && player.IsValid) return;
+        if (command.ArgCount < 2 || _specialRoundsService == null) return;
+
+        switch (command.GetArg(1).ToLowerInvariant())
+        {
+            case "lucky": _specialRoundsService.ForceLuckyNextRound(); Utils.Logger.LogInfo("Remote", "Lucky round forced next"); break;
+            case "pistol": _specialRoundsService.ForcePistolNextRound(); Utils.Logger.LogInfo("Remote", "Pistol round forced next"); break;
+        }
     }
 
     private HookResult OnCommandJoinTeam(CCSPlayerController? player, CommandInfo commandInfo)

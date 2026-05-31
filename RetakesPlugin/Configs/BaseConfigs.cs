@@ -53,11 +53,14 @@ public class BaseConfigs : BasePluginConfig
     [JsonPropertyName("FunModeSettings")]
     public FunModeSettings Fun { get; set; } = new();
 
+    [JsonPropertyName("SpecialRoundSettings")]
+    public SpecialRoundSettings SpecialRounds { get; set; } = new();
+
     [JsonPropertyName("DebugSettings")]
     public DebugSettings Debug { get; set; } = new();
 
     [JsonPropertyName("ConfigVersion")]
-    public override int Version { get; set; } = 8;
+    public override int Version { get; set; } = 9;
 }
 
 public class DebugSettings
