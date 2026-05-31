@@ -64,6 +64,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private WeaponAllocationService? _weaponAllocationService;
     private StatsService? _statsService;
     private MapVoteService? _mapVoteService;
+    private KillFeedService? _killFeedService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -130,6 +131,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         RegisterEventHandler<EventRoundPoststart>(OnRoundPostStart);
         RegisterEventHandler<EventRoundFreezeEnd>(OnRoundFreezeEnd);
         RegisterEventHandler<EventRoundEnd>(OnRoundEnd);
+        RegisterEventHandler<EventCsWinPanelMatch>(OnMatchEnd);
         RegisterEventHandler<EventPlayerSpawn>(OnPlayerSpawn);
         RegisterEventHandler<EventPlayerDeath>(OnPlayerDeath);
         RegisterEventHandler<EventBombPlanted>(OnBombPlanted, HookMode.Pre);
@@ -163,6 +165,9 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         AddCommand("css_rank", "Show your PvP stats.", rankCommand.OnCommand);
         AddCommand("css_stats", "Show your PvP stats.", rankCommand.OnCommand);
         AddCommand("css_top", "Show the PvP leaderboard.", topCommand.OnCommand);
+
+        // On-screen / chat HUD: kill streaks, dominations, bomb location
+        _killFeedService = new KillFeedService(() => Config.Hud.IsEnabled && Config.Hud.ShowKillStreaks);
 
         // Player-driven map vote (rock the vote)
         _mapVoteService = new MapVoteService(this, Config.MapVote, _random);
@@ -205,7 +210,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _adminMenuService.RegisterToggle(new FeatureToggle
         {
             Key = "weapons",
-            DisplayName = "Weapon allocator",
+            DisplayName = "Przydział broni",
             Get = () => Config.Weapon.IsEnabled,
             Set = value => Config.Weapon.IsEnabled = value
         });
@@ -213,7 +218,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _adminMenuService.RegisterToggle(new FeatureToggle
         {
             Key = "weapon_preferences",
-            DisplayName = "Weapon preferences (!guns)",
+            DisplayName = "Wybór broni (!guns)",
             Get = () => Config.Weapon.AllowPreferences,
             Set = value => Config.Weapon.AllowPreferences = value
         });
@@ -221,7 +226,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _adminMenuService.RegisterToggle(new FeatureToggle
         {
             Key = "stats",
-            DisplayName = "PvP stats recording",
+            DisplayName = "Zapis statystyk PvP",
             Get = () => Config.Stats.IsEnabled,
             Set = value => Config.Stats.IsEnabled = value
         });
@@ -229,9 +234,17 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _adminMenuService.RegisterToggle(new FeatureToggle
         {
             Key = "mapvote",
-            DisplayName = "Map vote (!rtv)",
+            DisplayName = "Głosowanie na mapę (!rtv)",
             Get = () => Config.MapVote.IsEnabled,
             Set = value => Config.MapVote.IsEnabled = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "hud",
+            DisplayName = "Komunikaty HUD (bomba/serie)",
+            Get = () => Config.Hud.IsEnabled,
+            Set = value => Config.Hud.IsEnabled = value
         });
 
         // Weapon-set submenu (force a global loadout / back to random).
@@ -246,10 +259,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         }
 
         // Round actions (reuse existing registered commands / direct callbacks).
-        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Scramble teams (next round)", Command = "css_scramble" });
-        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Force bombsite A", Command = "css_forcebombsite A" });
-        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Force bombsite B", Command = "css_forcebombsite B" });
-        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Stop forcing bombsite", Command = "css_forcebombsitestop" });
+        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Wymieszaj drużyny (następna runda)", Command = "css_scramble" });
+        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Wymuś bombsite A", Command = "css_forcebombsite A" });
+        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Wymuś bombsite B", Command = "css_forcebombsite B" });
+        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Przestań wymuszać bombsite", Command = "css_forcebombsitestop" });
 
         if (_mapVoteService != null)
         {
@@ -444,6 +457,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
         _instadefuseService?.ResetForNewRound();
+        _killFeedService?.Reset();
         return _roundEventHandlers?.OnRoundStart(@event, info) ?? HookResult.Continue;
     }
 
@@ -463,6 +477,12 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         return _roundEventHandlers?.OnRoundEnd(@event, info) ?? HookResult.Continue;
     }
 
+    private HookResult OnMatchEnd(EventCsWinPanelMatch @event, GameEventInfo info)
+    {
+        _mapVoteService?.OnMatchEnd();
+        return HookResult.Continue;
+    }
+
     private HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
         return _playerEventHandlers?.OnPlayerSpawn(@event, info) ?? HookResult.Continue;
@@ -471,6 +491,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private HookResult OnPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
     {
         _statsService?.OnPlayerDeath(@event);
+        _killFeedService?.OnPlayerDeath(@event);
         return _playerEventHandlers?.OnPlayerDeath(@event, info) ?? HookResult.Continue;
     }
 

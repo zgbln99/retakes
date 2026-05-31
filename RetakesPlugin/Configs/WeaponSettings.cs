@@ -28,24 +28,32 @@ public class WeaponSettings
     [JsonPropertyName("GiveGrenades")]
     public bool GiveGrenades { get; set; } = true;
 
-    /// <summary>Minimum number of grenades a player receives (random between Min and Max).</summary>
+    /// <summary>Minimum number of grenades a player always receives.</summary>
     [JsonPropertyName("MinGrenades")]
     public int MinGrenades { get; set; } = 1;
 
-    /// <summary>Maximum number of grenades a player receives (random between Min and Max).</summary>
+    /// <summary>Maximum number of grenades a player can receive.</summary>
     [JsonPropertyName("MaxGrenades")]
-    public int MaxGrenades { get; set; } = 3;
+    public int MaxGrenades { get; set; } = 2;
 
     /// <summary>
-    /// Extra grenades added on top of the random count when the player is the only
-    /// one alive on their team (the "lone wolf" bonus). Set to 0 to disable.
+    /// Probability (0..1) of getting each additional grenade above the minimum.
+    /// Applied repeatedly with falloff, so high counts are rare. With 0.25 the
+    /// distribution is roughly: 1 nade ~75%, 2 nades ~19%, 3 nades ~5%.
+    /// </summary>
+    [JsonPropertyName("ExtraGrenadeChance")]
+    public double ExtraGrenadeChance { get; set; } = 0.25;
+
+    /// <summary>
+    /// Extra grenades added on top when the player is the only one alive on their
+    /// team (the "lone wolf" bonus). Set to 0 to disable.
     /// </summary>
     [JsonPropertyName("LonePlayerExtraGrenades")]
-    public int LonePlayerExtraGrenades { get; set; } = 2;
+    public int LonePlayerExtraGrenades { get; set; } = 1;
 
     /// <summary>Hard cap on total grenades regardless of bonuses (CS2 carries up to 4 by default).</summary>
     [JsonPropertyName("GrenadeHardCap")]
-    public int GrenadeHardCap { get; set; } = 4;
+    public int GrenadeHardCap { get; set; } = 3;
 
     /// <summary>Allow the AWP to appear in random allocation / be picked.</summary>
     [JsonPropertyName("AllowSnipers")]
@@ -53,7 +61,7 @@ public class WeaponSettings
 
     /// <summary>Probability (0..1) of randomly receiving a sniper when no rifle preference is set.</summary>
     [JsonPropertyName("SniperChance")]
-    public double SniperChance { get; set; } = 0.12;
+    public double SniperChance { get; set; } = 0.05;
 
     [JsonPropertyName("TerroristRifles")]
     public List<string> TerroristRifles { get; set; } = new()

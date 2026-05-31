@@ -112,7 +112,7 @@ public class InstadefuseService
 
         if (_heThreat > 0 || _molotovThreat > 0 || _infernoThreat.Any())
         {
-            Server.PrintToChatAll($"{MessagePrefix}{ChatColors.LightRed}Instant defuse not possible — there is a grenade threat!");
+            Server.PrintToChatAll($"{MessagePrefix}{ChatColors.LightRed}Natychmiastowe rozbrojenie niemożliwe — w pobliżu jest granat/ogień!");
             return;
         }
 
@@ -130,7 +130,7 @@ public class InstadefuseService
         if (!bombCanBeDefusedInTime)
         {
             Server.PrintToChatAll(
-                $"{MessagePrefix}{ChatColors.Default}{defuser.PlayerName} was {ChatColors.DarkRed}{Math.Abs(timeLeftAfterDefuse):n3} seconds{ChatColors.Default} away from defusing.");
+                $"{MessagePrefix}{ChatColors.Default}{defuser.PlayerName} nie zdążył rozbroić o {ChatColors.DarkRed}{Math.Abs(timeLeftAfterDefuse):n3} s{ChatColors.Default}.");
 
             Server.NextFrame(() =>
             {
@@ -151,7 +151,7 @@ public class InstadefuseService
             bomb.DefuseCountDown = 0;
 
             Server.PrintToChatAll(
-                $"{MessagePrefix}{ChatColors.Default}{defuser.PlayerName} defused with {ChatColors.Green}{Math.Abs(bombTimeUntilDetonation):n3} seconds{ChatColors.Default} left on the bomb.");
+                $"{MessagePrefix}{ChatColors.Default}{defuser.PlayerName} rozbroił bombę z {ChatColors.Green}{Math.Abs(bombTimeUntilDetonation):n3} s{ChatColors.Default} zapasu.");
         });
     }
 

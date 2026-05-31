@@ -22,13 +22,13 @@ public class AdminMenuCommand
     {
         if (!PlayerHelper.IsValid(player))
         {
-            command.ReplyToCommand("This command can only be used in-game.");
+            command.ReplyToCommand("Tej komendy można użyć tylko w grze.");
             return;
         }
 
         if (!_adminMenuService.CanUse(player!))
         {
-            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} You don't have permission to use this command.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Nie masz uprawnień do tej komendy.");
             return;
         }
 

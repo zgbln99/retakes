@@ -26,7 +26,7 @@ public class TopCommand
 
         if (!_statsService.IsReady)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Statistics are currently unavailable.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Statystyki są obecnie niedostępne.");
             return;
         }
 
@@ -44,11 +44,11 @@ public class TopCommand
                         .FirstOrDefault(p => p.IsValid && p.SteamID == steamId);
                     if (target is not { IsValid: true }) return;
 
-                    target.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Top players:");
+                    target.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Najlepsi gracze:");
 
                     if (top.Count == 0)
                     {
-                        target.PrintToChat($" {ChatColors.Grey}No stats recorded yet.");
+                        target.PrintToChat($" {ChatColors.Grey}Brak zapisanych statystyk.");
                         return;
                     }
 

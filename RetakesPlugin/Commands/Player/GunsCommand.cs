@@ -29,7 +29,7 @@ public class GunsCommand
 
         if (!_weaponService.Settings.IsEnabled || !_weaponService.Settings.AllowPreferences)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Weapon preferences are disabled.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wybór broni jest wyłączony.");
             return;
         }
 
@@ -67,7 +67,24 @@ public class GunsCommand
             OpenMainMenu(p);
         });
 
+        OpenWithTimeout(player, menu);
+    }
+
+    /// <summary>Opens a center menu that auto-closes after 10 seconds.</summary>
+    private void OpenWithTimeout(CCSPlayerController player, CenterHtmlMenu menu)
+    {
         MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
+
+        var steamId = player.SteamID;
+        _plugin.AddTimer(10.0f, () =>
+        {
+            var target = CounterStrikeSharp.API.Utilities.GetPlayers()
+                .FirstOrDefault(p => p.IsValid && p.SteamID == steamId);
+            if (target != null)
+            {
+                MenuManager.CloseActiveMenu(target);
+            }
+        });
     }
 
     private void OpenRifleMenu(CCSPlayerController player, CsTeam team)
@@ -100,6 +117,6 @@ public class GunsCommand
             });
         }
 
-        MenuManager.OpenCenterHtmlMenu(_plugin, player, menu);
+        OpenWithTimeout(player, menu);
     }
 }

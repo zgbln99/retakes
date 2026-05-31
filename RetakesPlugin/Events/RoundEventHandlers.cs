@@ -236,6 +236,16 @@ public class RoundEventHandlers
     {
         Logger.LogInfo("Round", "Bomb planted");
 
+        if (_plugin.Config.Hud.IsEnabled && _plugin.Config.Hud.ShowBombSiteOnPlant)
+        {
+            var site = _currentBombsite == Bombsite.A ? "A" : "B";
+            var hud = $"<font color='#ff3030'>💣 BOMBA</font> <font color='#ffffff'>na</font> <font color='#ffd000'>{site}</font>";
+            foreach (var p in Utilities.GetPlayers())
+            {
+                if (p.IsValid) p.PrintToCenterHtml(hud);
+            }
+        }
+
         _plugin.AddTimer(4.1f, () =>
         {
             _announcementService.AnnounceBombsite(_currentBombsite, true);

@@ -132,7 +132,15 @@ public class WeaponAllocationService
 
         var min = Math.Max(0, _settings.MinGrenades);
         var max = Math.Max(min, _settings.MaxGrenades);
-        var count = _random.Next(min, max + 1);
+
+        // Weighted roll: start at the minimum and add each extra grenade only with
+        // ExtraGrenadeChance, so most players get the minimum and high counts are rare.
+        var count = min;
+        var chance = Math.Clamp(_settings.ExtraGrenadeChance, 0.0, 1.0);
+        while (count < max && _random.NextDouble() < chance)
+        {
+            count++;
+        }
 
         // Lone-wolf bonus: the only player alive on their team gets extra utility.
         if (_settings.LonePlayerExtraGrenades > 0 && IsAloneOnTeam(player, team))

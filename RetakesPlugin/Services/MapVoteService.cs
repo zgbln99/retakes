@@ -40,11 +40,20 @@ public class MapVoteService
         _voteActive = false;
     }
 
+    /// <summary>Opens the end-of-match map vote (a team won the match).</summary>
+    public void OnMatchEnd()
+    {
+        if (!_settings.IsEnabled || !_settings.StartAtMatchEnd || _voteActive) return;
+
+        Server.PrintToChatAll($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Koniec gry — głosowanie na następną mapę!");
+        StartVote();
+    }
+
     public void OnRtv(CCSPlayerController player)
     {
-        if (!_settings.IsEnabled)
+        if (!_settings.IsEnabled || !_settings.AllowRtv)
         {
-            player.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Głosowanie na mapę jest wyłączone.");
+            player.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Głosowanie !rtv jest wyłączone (mapa zmienia się na końcu gry).");
             return;
         }
 
@@ -74,7 +83,7 @@ public class MapVoteService
         }
     }
 
-    /// <summary>Forces a vote to start immediately (admin panel).</summary>
+    /// <summary>Forces a vote to start immediately (admin panel). Ignores AllowRtv.</summary>
     public void ForceStartVote(CCSPlayerController admin)
     {
         if (!_settings.IsEnabled)
@@ -152,9 +161,18 @@ public class MapVoteService
             var captured = map;
             menu.AddMenuOption(captured, (p, _) =>
             {
+                if (!p.IsValid) return;
                 _votes[p.SteamID] = captured;
                 p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Zagłosowałeś na: {ChatColors.Gold}{captured}");
-                MenuManager.CloseActiveMenu(p);
+
+                // Close on the next frame — closing from inside the option callback
+                // can crash the server (menu re-entrancy).
+                var steamId = p.SteamID;
+                _plugin.AddTimer(0.1f, () =>
+                {
+                    var target = Utilities.GetPlayers().FirstOrDefault(x => x.IsValid && x.SteamID == steamId);
+                    if (target != null) MenuManager.CloseActiveMenu(target);
+                });
             });
         }
 
@@ -188,7 +206,39 @@ public class MapVoteService
 
         _plugin.AddTimer(Math.Max(1.0f, _settings.ChangeDelaySeconds), () =>
         {
-            Server.ExecuteCommand($"changelevel {winner}");
+            ChangeMap(winner);
         });
+    }
+
+    /// <summary>
+    /// Changes the map. Supports both normal maps and Workshop maps: if the entry
+    /// is a numeric Workshop ID (or "ws:&lt;id&gt;") it uses host_workshop_map,
+    /// otherwise a plain changelevel. Guards against an empty/invalid name so a bad
+    /// config can never crash the server with a malformed command.
+    /// </summary>
+    private static void ChangeMap(string map)
+    {
+        if (string.IsNullOrWhiteSpace(map))
+        {
+            Utils.Logger.LogWarning("MapVote", "Empty map name, skipping change");
+            return;
+        }
+
+        map = map.Trim();
+
+        if (map.StartsWith("ws:", StringComparison.OrdinalIgnoreCase))
+        {
+            var id = map[3..];
+            Server.ExecuteCommand($"host_workshop_map {id}");
+            return;
+        }
+
+        if (ulong.TryParse(map, out _))
+        {
+            Server.ExecuteCommand($"host_workshop_map {map}");
+            return;
+        }
+
+        Server.ExecuteCommand($"changelevel {map}");
     }
 }

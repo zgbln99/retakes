@@ -24,23 +24,23 @@ public class RankCommand
 
         if (!_statsService.IsReady)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Statistics are currently unavailable.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Statystyki są obecnie niedostępne.");
             return;
         }
 
         var stats = _statsService.GetCached(player!.SteamID);
         if (stats == null)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} No stats recorded for you yet.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Nie masz jeszcze zapisanych statystyk.");
             return;
         }
 
-        player.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Your stats:");
+        player.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Twoje statystyki:");
         player.PrintToChat(
-            $" {ChatColors.Grey}Kills:{ChatColors.Green} {stats.Kills}{ChatColors.Grey} | Deaths:{ChatColors.Red} {stats.Deaths}" +
+            $" {ChatColors.Grey}Zabójstwa:{ChatColors.Green} {stats.Kills}{ChatColors.Grey} | Śmierci:{ChatColors.Red} {stats.Deaths}" +
             $"{ChatColors.Grey} | K/D:{ChatColors.Gold} {stats.KillDeathRatio}");
         player.PrintToChat(
-            $" {ChatColors.Grey}HS%:{ChatColors.Gold} {stats.HeadshotPercentage}%{ChatColors.Grey} | Assists:{ChatColors.Green} {stats.Assists}" +
-            $"{ChatColors.Grey} | Rounds:{ChatColors.White} {stats.RoundsPlayed}");
+            $" {ChatColors.Grey}HS%:{ChatColors.Gold} {stats.HeadshotPercentage}%{ChatColors.Grey} | Asysty:{ChatColors.Green} {stats.Assists}" +
+            $"{ChatColors.Grey} | Rundy:{ChatColors.White} {stats.RoundsPlayed}");
     }
 }

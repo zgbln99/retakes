@@ -32,6 +32,7 @@ public static class ServerHelper
                 bot_kick
                 bot_quota 0
                 mp_autoteambalance 0
+                mp_limitteams 0
                 mp_forcecamera 1
                 mp_give_player_c4 0
                 mp_halftime 0
