@@ -44,11 +44,8 @@ public class MapVoteSettings
     public float ChangeDelaySeconds { get; set; } = 5.0f;
 
     /// <summary>
-    /// Maps players can vote for. Each entry can be:
-    ///  - a normal map name, e.g. "de_mirage" (uses changelevel)
-    ///  - a Workshop ID, e.g. "3070253702" or "ws:3070253702" (uses host_workshop_map)
-    /// Use Workshop IDs if your server runs maps from the Steam Workshop, otherwise
-    /// changelevel to a non-installed map will fail.
+    /// Maps players can vote for. Each entry is a normal map name (e.g. "de_mirage")
+    /// loaded with changelevel. Make sure the maps are installed on the server.
     /// </summary>
     [JsonPropertyName("Maps")]
     public List<string> Maps { get; set; } = new()

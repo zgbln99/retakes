@@ -211,34 +211,17 @@ public class MapVoteService
     }
 
     /// <summary>
-    /// Changes the map. Supports both normal maps and Workshop maps: if the entry
-    /// is a numeric Workshop ID (or "ws:&lt;id&gt;") it uses host_workshop_map,
-    /// otherwise a plain changelevel. Guards against an empty/invalid name so a bad
-    /// config can never crash the server with a malformed command.
+    /// Changes the map with a plain changelevel. Guards against an empty name so a
+    /// bad config can never run a malformed command.
     /// </summary>
-    private static void ChangeMap(string map)
+    private static void ChangeMap(string mapName)
     {
-        if (string.IsNullOrWhiteSpace(map))
+        if (string.IsNullOrWhiteSpace(mapName))
         {
             Utils.Logger.LogWarning("MapVote", "Empty map name, skipping change");
             return;
         }
 
-        map = map.Trim();
-
-        if (map.StartsWith("ws:", StringComparison.OrdinalIgnoreCase))
-        {
-            var id = map[3..];
-            Server.ExecuteCommand($"host_workshop_map {id}");
-            return;
-        }
-
-        if (ulong.TryParse(map, out _))
-        {
-            Server.ExecuteCommand($"host_workshop_map {map}");
-            return;
-        }
-
-        Server.ExecuteCommand($"changelevel {map}");
+        Server.ExecuteCommand($"changelevel {mapName}");
     }
 }
