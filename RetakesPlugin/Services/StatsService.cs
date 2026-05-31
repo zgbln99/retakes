@@ -28,6 +28,10 @@ public class StatsService
     private readonly ConcurrentDictionary<ulong, PlayerStats> _cache = new();
     private readonly object _lock = new();
 
+    // Pending player-vs-player kill deltas, keyed by (killer, victim), flushed
+    // alongside the totals.
+    private readonly Dictionary<(ulong killer, ulong victim), DuelDelta> _pendingDuels = new();
+
     private bool _databaseReady;
     private volatile bool _stopped;
 
@@ -114,6 +118,27 @@ public class StatsService
                 stats.Kills++;
                 if (@event.Headshot) stats.Headshots++;
                 stats.IsDirty = true;
+
+                // Record the player-vs-player duel (attacker -> victim).
+                if (victimId != 0)
+                {
+                    var key = (attackerId, victimId);
+                    if (!_pendingDuels.TryGetValue(key, out var duel))
+                    {
+                        duel = new DuelDelta
+                        {
+                            KillerSteamId = attackerId,
+                            VictimSteamId = victimId,
+                            KillerName = attacker.PlayerName,
+                            VictimName = victim!.PlayerName
+                        };
+                        _pendingDuels[key] = duel;
+                    }
+                    duel.KillerName = attacker.PlayerName;
+                    duel.VictimName = victim!.PlayerName;
+                    duel.Kills++;
+                    if (@event.Headshot) duel.Headshots++;
+                }
             }
 
             if (assisterId != 0 && assisterId != attackerId && assisterId != victimId)
@@ -171,6 +196,10 @@ public class StatsService
 
     public async Task<List<PlayerStats>> GetTopAsync() =>
         await _repository.GetTopAsync(_settings.LeaderboardSize);
+
+    /// <summary>One player's PvP record vs every opponent they fought.</summary>
+    public async Task<List<DuelRow>> GetDuelsAsync(ulong steamId) =>
+        await _repository.GetDuelsAsync(steamId);
     #endregion
 
     private void FlushDirty()
@@ -178,6 +207,7 @@ public class StatsService
         if (!Active) return;
 
         List<PlayerStats> snapshot;
+        List<DuelDelta> duelSnapshot;
         lock (_lock)
         {
             snapshot = _cache.Values.Where(s => s is { IsDirty: true, Loaded: true }).Select(Clone).ToList();
@@ -185,15 +215,28 @@ public class StatsService
             {
                 if (stats.Loaded) stats.IsDirty = false;
             }
+
+            // Take and clear pending duel deltas.
+            duelSnapshot = _pendingDuels.Values.Select(d => new DuelDelta
+            {
+                KillerSteamId = d.KillerSteamId,
+                VictimSteamId = d.VictimSteamId,
+                KillerName = d.KillerName,
+                VictimName = d.VictimName,
+                Kills = d.Kills,
+                Headshots = d.Headshots
+            }).ToList();
+            _pendingDuels.Clear();
         }
 
-        if (snapshot.Count == 0) return;
+        if (snapshot.Count == 0 && duelSnapshot.Count == 0) return;
 
         Task.Run(async () =>
         {
             try
             {
-                await _repository.SaveBatchAsync(snapshot);
+                if (snapshot.Count > 0) await _repository.SaveBatchAsync(snapshot);
+                if (duelSnapshot.Count > 0) await _repository.SaveDuelsAsync(duelSnapshot);
             }
             catch (Exception ex)
             {

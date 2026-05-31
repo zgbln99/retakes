@@ -19,4 +19,10 @@ public interface IStatsRepository
 
     /// <summary>Returns the top players ordered by kills.</summary>
     Task<List<PlayerStats>> GetTopAsync(int limit);
+
+    /// <summary>Adds player-vs-player kill counts (killer-&gt;victim, with headshots).</summary>
+    Task SaveDuelsAsync(IReadOnlyCollection<DuelDelta> duels);
+
+    /// <summary>Returns one player's PvP record vs everyone they fought.</summary>
+    Task<List<DuelRow>> GetDuelsAsync(ulong steamId);
 }

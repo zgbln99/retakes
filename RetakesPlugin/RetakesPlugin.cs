@@ -207,9 +207,12 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _statsService.Initialize();
         var rankCommand = new RankCommand(_statsService);
         var topCommand = new TopCommand(_statsService);
+        var duelsCommand = new DuelsCommand(_statsService);
         AddCommand("css_rank", "Show your PvP stats.", rankCommand.OnCommand);
         AddCommand("css_stats", "Show your PvP stats.", rankCommand.OnCommand);
         AddCommand("css_top", "Show the PvP leaderboard.", topCommand.OnCommand);
+        AddCommand("css_duels", "Show your player-vs-player record.", duelsCommand.OnCommand);
+        AddCommand("css_vs", "Show your player-vs-player record.", duelsCommand.OnCommand);
 
         // Admin DB connection test
         var dbTestCommand = new DbTestCommand(Config.Stats.Database);

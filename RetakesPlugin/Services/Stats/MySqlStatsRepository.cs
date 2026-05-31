@@ -12,6 +12,7 @@ public class MySqlStatsRepository : IStatsRepository
 {
     private readonly string _connectionString;
     private readonly string _table;
+    private readonly string _duelsTable;
 
     public MySqlStatsRepository(DatabaseSettings settings)
     {
@@ -30,6 +31,7 @@ public class MySqlStatsRepository : IStatsRepository
         }.ConnectionString;
 
         _table = $"{settings.TablePrefix}player_stats";
+        _duelsTable = $"{settings.TablePrefix}duels";
     }
 
     public async Task InitializeAsync()
@@ -49,8 +51,27 @@ CREATE TABLE IF NOT EXISTS `{_table}` (
     `updated_at` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
 
-        await using var command = new MySqlCommand(sql, connection);
-        await command.ExecuteNonQueryAsync();
+        await using (var command = new MySqlCommand(sql, connection))
+        {
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var duelsSql = $@"
+CREATE TABLE IF NOT EXISTS `{_duelsTable}` (
+    `killer_id`   BIGINT UNSIGNED NOT NULL,
+    `victim_id`   BIGINT UNSIGNED NOT NULL,
+    `killer_name` VARCHAR(128)    NOT NULL DEFAULT '',
+    `victim_name` VARCHAR(128)    NOT NULL DEFAULT '',
+    `kills`       INT             NOT NULL DEFAULT 0,
+    `headshots`   INT             NOT NULL DEFAULT 0,
+    `updated_at`  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`killer_id`, `victim_id`),
+    INDEX `idx_victim` (`victim_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+        await using (var duelsCmd = new MySqlCommand(duelsSql, connection))
+        {
+            await duelsCmd.ExecuteNonQueryAsync();
+        }
     }
 
     public async Task<PlayerStats?> LoadAsync(ulong steamId)
@@ -144,6 +165,80 @@ ON DUPLICATE KEY UPDATE
                 Headshots = reader.GetInt32(4),
                 Assists = reader.GetInt32(5),
                 RoundsPlayed = reader.GetInt32(6)
+            });
+        }
+
+        return result;
+    }
+
+    public async Task SaveDuelsAsync(IReadOnlyCollection<DuelDelta> duels)
+    {
+        if (duels.Count == 0) return;
+
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        var sql = $@"
+INSERT INTO `{_duelsTable}` (`killer_id`, `victim_id`, `killer_name`, `victim_name`, `kills`, `headshots`)
+VALUES (@killer, @victim, @kname, @vname, @kills, @hs)
+ON DUPLICATE KEY UPDATE
+    `killer_name` = VALUES(`killer_name`),
+    `victim_name` = VALUES(`victim_name`),
+    `kills` = `kills` + VALUES(`kills`),
+    `headshots` = `headshots` + VALUES(`headshots`);";
+
+        foreach (var d in duels)
+        {
+            await using var command = new MySqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("@killer", d.KillerSteamId);
+            command.Parameters.AddWithValue("@victim", d.VictimSteamId);
+            command.Parameters.AddWithValue("@kname", Truncate(d.KillerName, 128));
+            command.Parameters.AddWithValue("@vname", Truncate(d.VictimName, 128));
+            command.Parameters.AddWithValue("@kills", d.Kills);
+            command.Parameters.AddWithValue("@hs", d.Headshots);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await transaction.CommitAsync();
+    }
+
+    public async Task<List<DuelRow>> GetDuelsAsync(ulong steamId)
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        // Combine both directions: my kills on opponent (as killer) and their kills
+        // on me (as victim of them = my deaths), grouped per opponent.
+        var sql = $@"
+SELECT opp_id,
+       MAX(opp_name) AS opp_name,
+       SUM(my_kills) AS my_kills,
+       SUM(my_deaths) AS my_deaths
+FROM (
+    SELECT `victim_id` AS opp_id, `victim_name` AS opp_name, `kills` AS my_kills, 0 AS my_deaths
+    FROM `{_duelsTable}` WHERE `killer_id` = @id
+    UNION ALL
+    SELECT `killer_id` AS opp_id, `killer_name` AS opp_name, 0 AS my_kills, `kills` AS my_deaths
+    FROM `{_duelsTable}` WHERE `victim_id` = @id
+) t
+GROUP BY opp_id
+ORDER BY (my_kills + my_deaths) DESC
+LIMIT 50;";
+
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@id", steamId);
+
+        var result = new List<DuelRow>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            result.Add(new DuelRow
+            {
+                OpponentSteamId = reader.GetUInt64(0),
+                OpponentName = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                Kills = reader.GetInt32(2),
+                Deaths = reader.GetInt32(3)
             });
         }
 
