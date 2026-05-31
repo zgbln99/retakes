@@ -64,6 +64,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private WeaponAllocationService? _weaponAllocationService;
     private StatsService? _statsService;
     private MapVoteService? _mapVoteService;
+    private AutoEndMapVoteService? _autoEndMapVoteService;
     private KillFeedService? _killFeedService;
     private AutoMessageService? _autoMessageService;
     private AdminFunModeMenu? _adminFunModeMenu;
@@ -226,6 +227,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         var rtvCommand = new RtvCommand(_mapVoteService);
         AddCommand("css_rtv", "Rock the vote — request a map change.", rtvCommand.OnCommand);
         AddCommand("css_votemap", "Rock the vote — request a map change.", rtvCommand.OnCommand);
+
+        // Automatic end-of-cycle map vote (last round). Separate from !rtv.
+        _autoEndMapVoteService = new AutoEndMapVoteService(this, _menuService, Config.AutoEndMapVote, _random);
+        _autoEndMapVoteService.OnBeginMapChange = BeginMapChange;
 
         // In-game admin panel (GUI) + runtime feature toggles
         SetupAdminMenu();
@@ -402,6 +407,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _isChangingMap = false;
 
         _mapVoteService?.Reset();
+        _autoEndMapVoteService?.Reset();
         SpawnService.Reset();
 
         AddTimer(1.0f, ServerHelper.ExecuteRetakesConfiguration);
@@ -577,6 +583,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _instadefuseService?.ResetForNewRound();
         _killFeedService?.Reset();
         _autoMessageService?.OnRoundStart();
+        _autoEndMapVoteService?.OnRoundStart();
 
         // Re-apply the gravity cvar for the active fun mode (resets on map change).
         if (_adminFunModeMenu != null && _weaponAllocationService != null)
@@ -604,6 +611,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         if (_isChangingMap) return HookResult.Continue;
 
         _statsService?.OnRoundEnd();
+        // Apply a pending auto-vote map change now that the round has ended.
+        _autoEndMapVoteService?.OnRoundEnd();
         return _roundEventHandlers?.OnRoundEnd(@event, info) ?? HookResult.Continue;
     }
 
