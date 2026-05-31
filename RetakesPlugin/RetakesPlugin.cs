@@ -71,6 +71,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private MenuService? _menuService;
     private RemoteControlService? _remoteControlService;
     private SpecialRoundsService? _specialRoundsService;
+    private EndGameScreenService? _endGameScreenService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -255,6 +256,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             _specialRoundsService = new SpecialRoundsService(_weaponAllocationService, Config.SpecialRounds, _random);
         }
 
+        // End-of-match summary screen (MVP / top fragger / ADR / clutches / next map).
+        _endGameScreenService = new EndGameScreenService(this, Config.EndGameScreen);
+        RegisterEventHandler<EventPlayerHurt>(OnPlayerHurt);
+
         // Remote control bridge (web panel on a VPS via the shared MySQL database).
         _remoteControlService = new RemoteControlService(this, Config.RemoteControl, Config.Stats.Database, () => _isChangingMap);
         _remoteControlService.Initialize();
@@ -373,6 +378,14 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             Set = value => Config.SpecialRounds.Pistol.Enabled = value
         });
 
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "endscreen",
+            DisplayName = "Ekran końca meczu",
+            Get = () => Config.EndGameScreen.Enabled,
+            Set = value => Config.EndGameScreen.Enabled = value
+        });
+
         // Weapon-set submenu (force a global loadout / back to random).
         if (_weaponAllocationService != null)
         {
@@ -474,6 +487,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _mapVoteService?.Reset();
         _autoEndMapVoteService?.Reset();
         _specialRoundsService?.ResetCycle();
+        _endGameScreenService?.ResetMatch();
         SpawnService.Reset();
 
         AddTimer(1.0f, ServerHelper.ExecuteRetakesConfiguration);
@@ -651,6 +665,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _autoMessageService?.OnRoundStart();
         _autoEndMapVoteService?.OnRoundStart();
         _specialRoundsService?.OnRoundStart();
+        _endGameScreenService?.OnRoundStart();
 
         // Re-apply the gravity cvar for the active fun mode (resets on map change).
         if (_adminFunModeMenu != null && _weaponAllocationService != null)
@@ -679,6 +694,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         _statsService?.OnRoundEnd();
         _specialRoundsService?.OnRoundEnd();
+        _endGameScreenService?.OnRoundEnd((CounterStrikeSharp.API.Modules.Utils.CsTeam)@event.Winner);
         // Apply a pending auto-vote map change now that the round has ended.
         _autoEndMapVoteService?.OnRoundEnd();
         return _roundEventHandlers?.OnRoundEnd(@event, info) ?? HookResult.Continue;
@@ -687,6 +703,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private HookResult OnMatchEnd(EventCsWinPanelMatch @event, GameEventInfo info)
     {
         if (_isChangingMap) return HookResult.Continue;
+
+        // Show the end-of-match summary (with the auto-vote's next map if decided).
+        _endGameScreenService?.ShowEndScreen(_autoEndMapVoteService?.PendingMap);
+
         _mapVoteService?.OnMatchEnd();
         return HookResult.Continue;
     }
@@ -703,7 +723,15 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         _statsService?.OnPlayerDeath(@event);
         _killFeedService?.OnPlayerDeath(@event);
+        _endGameScreenService?.OnPlayerDeath(@event);
         return _playerEventHandlers?.OnPlayerDeath(@event, info) ?? HookResult.Continue;
+    }
+
+    private HookResult OnPlayerHurt(EventPlayerHurt @event, GameEventInfo info)
+    {
+        if (_isChangingMap) return HookResult.Continue;
+        _endGameScreenService?.OnPlayerHurt(@event);
+        return HookResult.Continue;
     }
 
     private HookResult OnBombPlanted(EventBombPlanted @event, GameEventInfo info)
@@ -854,6 +882,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             case "pistol.enabled": Config.SpecialRounds.Pistol.Enabled = B(); break;
             case "pistol.everyx": Config.SpecialRounds.Pistol.EveryXRounds = I(); break;
             case "pistol.minplayers": Config.SpecialRounds.Pistol.MinPlayers = I(); break;
+            case "endscreen.enabled": Config.EndGameScreen.Enabled = B(); break;
             default: applied = false; break;
         }
 

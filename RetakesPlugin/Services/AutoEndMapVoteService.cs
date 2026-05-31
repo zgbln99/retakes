@@ -29,6 +29,9 @@ public class AutoEndMapVoteService
     private bool _changeQueued;      // changelevel already scheduled (no double change)
     private string? _pendingMap;     // winning map awaiting the round end
 
+    /// <summary>The winning next map if a vote has decided one, else null.</summary>
+    public string? PendingMap => _pendingMap;
+
     /// <summary>
     /// Freezes plugin logic before the map changes (shared with the rtv flow). Must
     /// be set by the plugin to RetakesPlugin.BeginMapChange.

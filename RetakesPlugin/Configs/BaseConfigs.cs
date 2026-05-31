@@ -56,11 +56,14 @@ public class BaseConfigs : BasePluginConfig
     [JsonPropertyName("SpecialRoundSettings")]
     public SpecialRoundSettings SpecialRounds { get; set; } = new();
 
+    [JsonPropertyName("EndGameScreenSettings")]
+    public EndGameScreenSettings EndGameScreen { get; set; } = new();
+
     [JsonPropertyName("DebugSettings")]
     public DebugSettings Debug { get; set; } = new();
 
     [JsonPropertyName("ConfigVersion")]
-    public override int Version { get; set; } = 9;
+    public override int Version { get; set; } = 10;
 }
 
 public class DebugSettings

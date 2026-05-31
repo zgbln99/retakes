@@ -123,6 +123,9 @@
       <div class="row"><span style="flex:1">Pistol co X rund</span>
         <input id="pistolx" style="width:70px" placeholder="5">
         <button onclick="cfg('pistol.everyx',document.getElementById('pistolx').value)">Ustaw</button></div>
+      <div class="row"><span style="flex:1">Ekran końca meczu</span>
+        <button class="sec" onclick="cfg('endscreen.enabled','1')">ON</button>
+        <button class="sec" onclick="cfg('endscreen.enabled','0')">OFF</button></div>
       <div class="row" style="margin-top:8px">
         <button onclick="forceRound('lucky')">🎲 Wymuś Lucky (nast. runda)</button>
         <button onclick="forceRound('pistol')">🔫 Wymuś Pistol (nast. runda)</button>

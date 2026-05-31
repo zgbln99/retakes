@@ -103,7 +103,8 @@ const CFG_KEYS = new Set([
   'stats.enabled', 'hud.enabled', 'automessage.enabled',
   'mapvote.allowrtv', 'autoendvote.enabled', 'fun.enabled',
   'lucky.enabled', 'lucky.chance', 'lucky.minplayers',
-  'pistol.enabled', 'pistol.everyx', 'pistol.minplayers'
+  'pistol.enabled', 'pistol.everyx', 'pistol.minplayers',
+  'endscreen.enabled'
 ]);
 
 app.post('/api/setcfg', async (req, res) => {
