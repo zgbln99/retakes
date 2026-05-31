@@ -14,16 +14,25 @@ rozszerzając je o dodatkowe funkcje. Pełna atrybucja w pliku [`NOTICE`](./NOTI
 
 ## Status
 
-🚧 **Faza 1 — fundament (gotowe):**
-- [x] Import i bazy **cs2-retakes**
+✅ **Faza 1 — fundament:**
+- [x] Import bazy **cs2-retakes**
 - [x] Wbudowany **instadefuse** (zintegrowany jako usługa, włączany z configu)
 - [x] CI w GitHub Actions (budowanie obu projektów + artefakt do wgrania)
 - [x] Licencja GPL-3.0 + atrybucja
 
+✅ **Faza 2 — panel admina (GUI w grze):**
+- [x] Menu admina (`!admin` / `!panel`) jako centrum dowodzenia
+- [x] System przełączników on/off (rejestr funkcji + akcje rundy)
+- [x] Permisje przez `AdminManager` (konfigurowalne flagi)
+
+✅ **Faza 3 — broń:**
+- [x] Wbudowany allocator (losowy przydział: pancerz, karabin, pistolet, granaty, defuser)
+- [x] Preferencje gracza przez menu **`!guns`** (karabin T/CT, snajperka)
+- [x] Konfigurowalne pule broni + szansa na snajperkę
+- [x] Przełączniki broni w panelu admina
+
 🔜 **Kolejne fazy (zaplanowane):**
-- [ ] **Losowość broni** + menu wyboru (`!guns`)
-- [ ] **Statystyki PvP** (K/D, HS%, kto-kogo) — zapis w **MySQL** (np. baza z DatHost) lub SQLite
-- [ ] **Panel admina z GUI w grze** (menu) z przełącznikami wszystkich funkcji on/off
+- [ ] **Statystyki PvP** (K/D, HS%, kto-kogo) — zapis w **MySQL** (baza z DatHost); szkielet modułu już gotowy, do podłączenia
 - [ ] **Tryby fun** (symetryczne, jawne): glow dla wszystkich, one-shot dla wszystkich
 - [ ] **Boss / Juggernaut Mode** (1 vs reszta, jawnie ogłaszany)
 - [ ] **Panel webowy** (edycja configów na hoście)
