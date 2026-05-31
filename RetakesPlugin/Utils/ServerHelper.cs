@@ -16,6 +16,14 @@ public static class ServerHelper
         }
 
         Server.ExecuteCommand("exec cs2-retakes/retakes.cfg");
+
+        // Force-disable the engine's built-in end-of-match map change/vote even on
+        // servers whose retakes.cfg was generated before these lines were added.
+        // The plugin must be the only thing that changes the map (two simultaneous
+        // changelevels crash the server).
+        Server.ExecuteCommand("mp_endmatch_votenextmap 0");
+        Server.ExecuteCommand("mp_match_end_changelevel 0");
+
         Logger.LogInfo("Server", "Retakes configuration executed");
     }
 
@@ -63,6 +71,11 @@ public static class ServerHelper
                 mp_match_end_restart 0
                 mp_timelimit 0
                 mp_match_restart_delay 10
+                // Disable the engine's built-in end-of-match map change/vote so the
+                // plugin is the only thing that changes the map (two simultaneous
+                // changelevels crash the server).
+                mp_endmatch_votenextmap 0
+                mp_match_end_changelevel 0
                 mp_death_drop_gun 1
                 mp_death_drop_defuser 1
                 mp_death_drop_grenade 1
