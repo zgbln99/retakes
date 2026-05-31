@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CWELOWNIA — panel</title>
+  <style>
+    :root { --green:#40ff40; --bg:#111; --card:#1b1b1b; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,sans-serif; background:var(--bg); color:#eee; margin:0; }
+    header { background:#000; padding:14px 22px; display:flex; align-items:center; gap:16px; }
+    header h1 { color:var(--green); margin:0; font-size:20px; }
+    header .status { margin-left:auto; font-size:14px; color:#aaa; }
+    main { padding:22px; display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+    .card { background:var(--card); border-radius:12px; padding:18px; }
+    .card h2 { margin:0 0 12px; font-size:16px; color:var(--green); }
+    button, input, select { font-size:14px; }
+    button { background:var(--green); color:#111; border:0; border-radius:6px; padding:8px 12px;
+             font-weight:bold; cursor:pointer; margin:3px 0; }
+    button.sec { background:#333; color:#eee; }
+    input, select { background:#111; color:#eee; border:1px solid #333; border-radius:6px; padding:8px; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:5px 0; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { text-align:left; padding:6px 8px; border-bottom:1px solid #2a2a2a; }
+    th { color:#888; }
+    .logout { background:#552; color:#fff; }
+    .small { font-size:12px; color:#888; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CWELOWNIA</h1>
+    <span class="status" id="status">…</span>
+    <form method="post" action="/logout" style="margin:0"><button class="logout">Wyloguj</button></form>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Serwer</h2>
+      <div class="row">
+        <select id="mapSel">
+          <option>de_inferno</option><option>de_mirage</option><option>de_dust2</option>
+          <option>de_cache</option><option>de_nuke</option><option>de_ancient</option><option>de_anubis</option>
+        </select>
+        <button onclick="changeMap()">Zmień mapę</button>
+      </div>
+      <div class="row">
+        <button class="sec" onclick="cmd('css_scramble')">Scramble</button>
+        <button class="sec" onclick="cmd('css_forcebombsite A')">Force A</button>
+        <button class="sec" onclick="cmd('css_forcebombsite B')">Force B</button>
+        <button class="sec" onclick="cmd('mp_restartgame 1')">Restart</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Dowolna komenda</h2>
+      <div class="row">
+        <input id="cmd" placeholder="np. css_scramble / changelevel de_nuke" style="flex:1">
+        <button onclick="sendCmd()">Wyślij</button>
+      </div>
+      <p class="small">Komenda trafia do kolejki MySQL i wykonuje się w grze (co kilka sekund).</p>
+    </div>
+
+    <div class="card">
+      <h2>Ranking (TOP)</h2>
+      <table id="top"><thead><tr><th>#</th><th>Gracz</th><th>K</th><th>D</th><th>HS%</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="card">
+      <h2>Historia komend</h2>
+      <table id="hist"><thead><tr><th>#</th><th>Komenda</th><th>Status</th></tr></thead><tbody></tbody></table>
+    </div>
+  </main>
+
+  <script>
+    async function api(path, opts) {
+      const r = await fetch(path, opts);
+      if (r.status === 401) { location.href = '/login'; return null; }
+      return r.json();
+    }
+    async function post(path, body) {
+      return api(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+    }
+    function cmd(c) { post('/api/command', { command: c }).then(refreshHistory); }
+    function sendCmd() { const v = document.getElementById('cmd').value.trim(); if (v) { post('/api/command',{command:v}).then(()=>{document.getElementById('cmd').value='';refreshHistory();}); } }
+    function changeMap() { post('/api/changemap', { map: document.getElementById('mapSel').value }).then(refreshHistory); }
+
+    async function refreshStatus() {
+      const d = await api('/api/status'); if (!d) return;
+      const s = d.status;
+      document.getElementById('status').textContent = s
+        ? `Mapa: ${s.map} · Gracze: ${s.players}/${s.max_players} · ${new Date(s.updated_at).toLocaleTimeString()}`
+        : 'Brak danych statusu (czy plugin działa i RemoteControl=on?)';
+    }
+    async function refreshTop() {
+      const d = await api('/api/top?limit=25'); if (!d) return;
+      const hs = p => p.kills ? Math.round(p.headshots/p.kills*100) : 0;
+      document.querySelector('#top tbody').innerHTML = d.players.map((p,i)=>
+        `<tr><td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${hs(p)}%</td></tr>`).join('');
+    }
+    async function refreshHistory() {
+      const d = await api('/api/history'); if (!d) return;
+      document.querySelector('#hist tbody').innerHTML = d.commands.map(c=>
+        `<tr><td>${c.id}</td><td>${escapeHtml(c.command)}</td><td>${c.status}</td></tr>`).join('');
+    }
+    function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+    function refreshAll(){ refreshStatus(); refreshTop(); refreshHistory(); }
+    refreshAll();
+    setInterval(refreshStatus, 5000);
+    setInterval(refreshHistory, 5000);
+    setInterval(refreshTop, 15000);
+  </script>
+</body>
+</html>

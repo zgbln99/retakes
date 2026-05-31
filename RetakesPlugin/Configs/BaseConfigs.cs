@@ -41,6 +41,9 @@ public class BaseConfigs : BasePluginConfig
     [JsonPropertyName("AutoEndMapVote")]
     public AutoEndMapVoteSettings AutoEndMapVote { get; set; } = new();
 
+    [JsonPropertyName("RemoteControlSettings")]
+    public RemoteControlSettings RemoteControl { get; set; } = new();
+
     [JsonPropertyName("HudSettings")]
     public HudSettings Hud { get; set; } = new();
 
@@ -54,7 +57,7 @@ public class BaseConfigs : BasePluginConfig
     public DebugSettings Debug { get; set; } = new();
 
     [JsonPropertyName("ConfigVersion")]
-    public override int Version { get; set; } = 6;
+    public override int Version { get; set; } = 7;
 }
 
 public class DebugSettings

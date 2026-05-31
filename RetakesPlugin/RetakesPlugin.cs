@@ -69,6 +69,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private AutoMessageService? _autoMessageService;
     private AdminFunModeMenu? _adminFunModeMenu;
     private MenuService? _menuService;
+    private RemoteControlService? _remoteControlService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -127,6 +128,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // Stop periodic work that would otherwise fire during the unload.
         _statsService?.StopTimers();
         _autoMessageService?.StopTimers();
+        _remoteControlService?.StopTimers();
 
         // Close any open menus so no menu callback runs during the unload.
         _menuService?.CloseAll();
@@ -231,6 +233,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // Automatic end-of-cycle map vote (last round). Separate from !rtv.
         _autoEndMapVoteService = new AutoEndMapVoteService(this, _menuService, Config.AutoEndMapVote, _random);
         _autoEndMapVoteService.OnBeginMapChange = BeginMapChange;
+
+        // Remote control bridge (web panel on a VPS via the shared MySQL database).
+        _remoteControlService = new RemoteControlService(this, Config.RemoteControl, Config.Stats.Database, () => _isChangingMap);
+        _remoteControlService.Initialize();
 
         // In-game admin panel (GUI) + runtime feature toggles
         SetupAdminMenu();

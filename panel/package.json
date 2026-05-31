@@ -1,0 +1,15 @@
+{
+  "name": "cwelownia-panel",
+  "version": "1.0.0",
+  "description": "Web panel for the CWELOWNIA retakes CS2 server (MySQL bridge to the plugin).",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "mysql2": "^3.11.0"
+  }
+}
