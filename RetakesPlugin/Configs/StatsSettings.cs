@@ -29,6 +29,20 @@ public class StatsSettings
     /// </summary>
     [JsonPropertyName("LeaderboardSize")]
     public int LeaderboardSize { get; set; } = 10;
+
+    /// <summary>StatTrak (per-weapon kill counters) settings.</summary>
+    [JsonPropertyName("StatTrak")]
+    public StatTrakSettings StatTrak { get; set; } = new();
+}
+
+public class StatTrakSettings
+{
+    [JsonPropertyName("Enabled")]
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>How many weapons the !stattrak list shows.</summary>
+    [JsonPropertyName("TopWeaponsLimit")]
+    public int TopWeaponsLimit { get; set; } = 8;
 }
 
 /// <summary>

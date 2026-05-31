@@ -215,6 +215,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         AddCommand("css_top", "Show the PvP leaderboard.", topCommand.OnCommand);
         AddCommand("css_duels", "Show your player-vs-player record.", duelsCommand.OnCommand);
         AddCommand("css_vs", "Show your player-vs-player record.", duelsCommand.OnCommand);
+        var statTrakCommand = new StatTrakCommand(_statsService, Config.Stats.StatTrak.TopWeaponsLimit);
+        AddCommand("css_stattrak", "Show your StatTrak weapon counters.", statTrakCommand.OnCommand);
 
         // Admin DB connection test
         var dbTestCommand = new DbTestCommand(Config.Stats.Database);
@@ -249,6 +251,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         AddCommand("css_rcon_savecfg", "Persist current config to disk (used by the web panel).", OnRconSaveCfgCommand);
         // Force a special round next: css_rcon_specialround <lucky|pistol>
         AddCommand("css_rcon_specialround", "Force a special round next (web panel).", OnRconSpecialRoundCommand);
+        // Reset StatTrak: css_rcon_stattrak_reset <steamid64|all>
+        AddCommand("css_rcon_stattrak_reset", "Reset StatTrak counters (web panel).", OnRconStatTrakResetCommand);
 
         // Special rounds (Lucky Round / Pistol Round) — composes with the allocator.
         if (_weaponAllocationService != null)
@@ -384,6 +388,14 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             DisplayName = "Ekran końca meczu",
             Get = () => Config.EndGameScreen.Enabled,
             Set = value => Config.EndGameScreen.Enabled = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "stattrak",
+            DisplayName = "StatTrak (liczniki broni)",
+            Get = () => Config.Stats.StatTrak.Enabled,
+            Set = value => Config.Stats.StatTrak.Enabled = value
         });
 
         // Weapon-set submenu (force a global loadout / back to random).
@@ -883,6 +895,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             case "pistol.everyx": Config.SpecialRounds.Pistol.EveryXRounds = I(); break;
             case "pistol.minplayers": Config.SpecialRounds.Pistol.MinPlayers = I(); break;
             case "endscreen.enabled": Config.EndGameScreen.Enabled = B(); break;
+            case "stattrak.enabled": Config.Stats.StatTrak.Enabled = B(); break;
             default: applied = false; break;
         }
 
@@ -900,6 +913,31 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         if (player != null && player.IsValid) return;
         var ok = Services.ConfigPersistence.Save(Config);
         Utils.Logger.LogInfo("Remote", ok ? "Config saved to disk" : "Config save failed");
+    }
+
+    // css_rcon_stattrak_reset <steamid64|all> — reset StatTrak counters.
+    private void OnRconStatTrakResetCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player != null && player.IsValid) return;
+        if (command.ArgCount < 2 || _statsService == null) return;
+
+        var arg = command.GetArg(1);
+        ulong steamId = 0;
+        if (!arg.Equals("all", StringComparison.OrdinalIgnoreCase) && !ulong.TryParse(arg, out steamId)) return;
+
+        var sid = steamId;
+        Task.Run(async () =>
+        {
+            try
+            {
+                await _statsService.ResetStatTrakAsync(sid);
+                Utils.Logger.LogInfo("Remote", sid == 0 ? "StatTrak reset (all)" : $"StatTrak reset for {sid}");
+            }
+            catch (Exception ex)
+            {
+                Utils.Logger.LogWarning("Remote", $"StatTrak reset failed: {ex.Message}");
+            }
+        });
     }
 
     // css_rcon_specialround <lucky|pistol> — force a special round next round.

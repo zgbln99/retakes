@@ -25,4 +25,13 @@ public interface IStatsRepository
 
     /// <summary>Returns one player's PvP record vs everyone they fought.</summary>
     Task<List<DuelRow>> GetDuelsAsync(ulong steamId);
+
+    /// <summary>Adds StatTrak kill counts per (player, weapon).</summary>
+    Task SaveStatTrakAsync(IReadOnlyCollection<StatTrakDelta> deltas);
+
+    /// <summary>Returns a player's StatTrak weapon counters (most-used first).</summary>
+    Task<List<StatTrakRow>> GetStatTrakAsync(ulong steamId, int limit);
+
+    /// <summary>Resets a player's StatTrak counters (or all if steamId is 0).</summary>
+    Task ResetStatTrakAsync(ulong steamId);
 }

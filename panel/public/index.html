@@ -5,235 +5,280 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CWELOWNIA — panel</title>
   <style>
-    :root { --green:#40ff40; --bg:#111; --card:#1b1b1b; }
+    :root { --green:#40ff40; --bg:#0f0f0f; --card:#1b1b1b; --line:#2a2a2a; }
     * { box-sizing:border-box; }
     body { font-family:system-ui,sans-serif; background:var(--bg); color:#eee; margin:0; }
-    header { background:#000; padding:14px 22px; display:flex; align-items:center; gap:16px; }
-    header h1 { color:var(--green); margin:0; font-size:20px; }
-    header .status { margin-left:auto; font-size:14px; color:#aaa; }
-    main { padding:22px; display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
-    .card { background:var(--card); border-radius:12px; padding:18px; }
-    .card h2 { margin:0 0 12px; font-size:16px; color:var(--green); }
+    header { background:#000; padding:12px 20px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:10; }
+    header h1 { color:var(--green); margin:0; font-size:19px; }
+    header .status { margin-left:auto; font-size:13px; color:#bbb; }
+    nav { display:flex; flex-wrap:wrap; gap:4px; background:#141414; padding:8px 16px; border-bottom:1px solid var(--line); position:sticky; top:48px; z-index:9; }
+    nav button { background:transparent; color:#bbb; border:0; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:14px; }
+    nav button.active { background:var(--green); color:#111; font-weight:bold; }
+    main { padding:18px; }
+    .tab { display:none; }
+    .tab.active { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); }
+    .card { background:var(--card); border-radius:12px; padding:16px; }
+    .card.wide { grid-column:1/-1; }
+    .card h2 { margin:0 0 12px; font-size:15px; color:var(--green); }
     button, input, select { font-size:14px; }
-    button { background:var(--green); color:#111; border:0; border-radius:6px; padding:8px 12px;
-             font-weight:bold; cursor:pointer; margin:3px 0; }
-    button.sec { background:#333; color:#eee; }
-    input, select { background:#111; color:#eee; border:1px solid #333; border-radius:6px; padding:8px; }
+    .btn { background:var(--green); color:#111; border:0; border-radius:6px; padding:8px 12px; font-weight:bold; cursor:pointer; margin:3px 2px; }
+    .btn.sec { background:#333; color:#eee; }
+    .btn.danger { background:#a33; color:#fff; }
+    input, select { background:#111; color:#eee; border:1px solid var(--line); border-radius:6px; padding:8px; }
     .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:5px 0; }
+    .row > span:first-child { flex:1; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
-    th, td { text-align:left; padding:6px 8px; border-bottom:1px solid #2a2a2a; }
+    th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
     th { color:#888; }
-    .logout { background:#552; color:#fff; }
     .small { font-size:12px; color:#888; }
-    .clickable { cursor:pointer; }
-    .clickable:hover { background:#262626; }
-    #modal { position:fixed; inset:0; background:#000a; display:none; align-items:center; justify-content:center; }
-    #modal .box { background:var(--card); border-radius:12px; padding:20px; width:420px; max-height:80vh; overflow:auto; }
+    .clickable { cursor:pointer; } .clickable:hover { background:#262626; }
+    .logout { background:#552; color:#fff; }
+    #toast { position:fixed; bottom:18px; right:18px; background:#222; border:1px solid var(--green); color:#eee; padding:10px 16px; border-radius:8px; display:none; }
+    #modal { position:fixed; inset:0; background:#000b; display:none; align-items:center; justify-content:center; z-index:20; }
+    #modal .box { background:var(--card); border-radius:12px; padding:20px; width:460px; max-height:80vh; overflow:auto; }
     #modal h3 { margin:0 0 12px; color:var(--green); }
-    #modal .close { float:right; }
+    .stat { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--line); }
   </style>
 </head>
 <body>
   <header>
     <h1>CWELOWNIA</h1>
     <span class="status" id="status">…</span>
-    <form method="post" action="/logout" style="margin:0"><button class="logout">Wyloguj</button></form>
+    <form method="post" action="/logout" style="margin:0"><button class="btn logout">Wyloguj</button></form>
   </header>
 
+  <nav id="tabs">
+    <button class="active" data-tab="dashboard">Dashboard</button>
+    <button data-tab="modules">Moduły</button>
+    <button data-tab="maps">Mapy / Vote</button>
+    <button data-tab="special">Tryby specjalne</button>
+    <button data-tab="players">Gracze</button>
+    <button data-tab="stats">Statystyki</button>
+    <button data-tab="console">Konsola</button>
+  </nav>
+
   <main>
-    <div class="card">
-      <h2>Serwer</h2>
-      <div class="row">
-        <select id="mapSel">
-          <option>de_inferno</option><option>de_mirage</option><option>de_dust2</option>
-          <option>de_cache</option><option>de_nuke</option><option>de_ancient</option><option>de_anubis</option>
-        </select>
-        <button onclick="changeMap()">Zmień mapę</button>
+    <!-- DASHBOARD -->
+    <section class="tab active" id="tab-dashboard">
+      <div class="card wide">
+        <h2>Status serwera</h2>
+        <div id="dash" class="small">Ładowanie…</div>
       </div>
-      <div class="row">
-        <button class="sec" onclick="cmd('css_scramble')">Scramble</button>
-        <button class="sec" onclick="cmd('css_forcebombsite A')">Force A</button>
-        <button class="sec" onclick="cmd('css_forcebombsite B')">Force B</button>
-        <button class="sec" onclick="cmd('mp_restartgame 1')">Restart</button>
+      <div class="card">
+        <h2>Szybkie akcje</h2>
+        <div class="row">
+          <select id="mapSel"></select>
+          <button class="btn" onclick="confirmDo('Zmienić mapę?',()=>changeMap())">Zmień mapę</button>
+        </div>
+        <div class="row">
+          <button class="btn sec" onclick="cmd('css_scramble')">Scramble</button>
+          <button class="btn sec" onclick="cmd('css_forcebombsite A')">Force A</button>
+          <button class="btn sec" onclick="cmd('css_forcebombsite B')">Force B</button>
+          <button class="btn sec" onclick="confirmDo('Restart gry?',()=>cmd('mp_restartgame 1'))">Restart</button>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
-      <h2>Ustawienia (na żywo)</h2>
-      <div class="row"><span style="flex:1">Instadefuse</span>
-        <button class="sec" onclick="cfg('instadefuse.enabled','1')">ON</button>
-        <button class="sec" onclick="cfg('instadefuse.enabled','0')">OFF</button></div>
-      <div class="row"><span style="flex:1">Statystyki</span>
-        <button class="sec" onclick="cfg('stats.enabled','1')">ON</button>
-        <button class="sec" onclick="cfg('stats.enabled','0')">OFF</button></div>
-      <div class="row"><span style="flex:1">HUD (bomba/serie)</span>
-        <button class="sec" onclick="cfg('hud.enabled','1')">ON</button>
-        <button class="sec" onclick="cfg('hud.enabled','0')">OFF</button></div>
-      <div class="row"><span style="flex:1">Auto-wiadomości</span>
-        <button class="sec" onclick="cfg('automessage.enabled','1')">ON</button>
-        <button class="sec" onclick="cfg('automessage.enabled','0')">OFF</button></div>
-      <div class="row"><span style="flex:1">!rtv (w trakcie)</span>
-        <button class="sec" onclick="cfg('mapvote.allowrtv','1')">ON</button>
-        <button class="sec" onclick="cfg('mapvote.allowrtv','0')">OFF</button></div>
-      <div class="row"><span style="flex:1">Głosowanie po meczu</span>
-        <button class="sec" onclick="cfg('autoendvote.enabled','1')">ON</button>
-        <button class="sec" onclick="cfg('autoendvote.enabled','0')">OFF</button></div>
-      <div class="row"><span style="flex:1">Snajperki</span>
-        <button class="sec" onclick="cfg('weapon.allowsnipers','1')">ON</button>
-        <button class="sec" onclick="cfg('weapon.allowsnipers','0')">OFF</button></div>
-      <div class="row"><span style="flex:1">Szansa na snajperkę</span>
-        <input id="sniperchance" style="width:70px" placeholder="0.05">
-        <button onclick="cfg('weapon.sniperchance', document.getElementById('sniperchance').value)">Ustaw</button></div>
-      <div class="row"><span style="flex:1">Granaty min/max</span>
-        <input id="gmin" style="width:50px" placeholder="1">
-        <input id="gmax" style="width:50px" placeholder="2">
-        <button onclick="cfg('weapon.mingrenades',document.getElementById('gmin').value);cfg('weapon.maxgrenades',document.getElementById('gmax').value)">Ustaw</button></div>
-      <div class="row" style="margin-top:8px">
-        <button onclick="saveConfig()">💾 Zapisz config do pliku</button>
+    <!-- MODULES -->
+    <section class="tab" id="tab-modules">
+      <div class="card">
+        <h2>Funkcje (on/off)</h2>
+        <div id="toggles"></div>
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="saveConfig()">💾 Zapisz config do pliku</button></div>
+        <p class="small">Zmiany działają od następnej rundy i są zapisywane do configu.</p>
       </div>
-      <p class="small">Zmiany działają od następnej rundy i są automatycznie zapisywane do pliku configu (przetrwają restart). Przycisk wymusza zapis ręcznie.</p>
-    </div>
-
-    <div class="card">
-      <h2>Dowolna komenda</h2>
-      <div class="row">
-        <input id="cmd" placeholder="np. css_scramble / changelevel de_nuke" style="flex:1">
-        <button onclick="sendCmd()">Wyślij</button>
+      <div class="card">
+        <h2>Parametry broni</h2>
+        <div class="row"><span>Szansa na snajperkę (0-1)</span>
+          <input id="sniperchance" style="width:70px" placeholder="0.05">
+          <button class="btn" onclick="cfg('weapon.sniperchance',val('sniperchance'))">Ustaw</button></div>
+        <div class="row"><span>Granaty min/max</span>
+          <input id="gmin" style="width:50px" placeholder="1"><input id="gmax" style="width:50px" placeholder="2">
+          <button class="btn" onclick="cfg('weapon.mingrenades',val('gmin'));cfg('weapon.maxgrenades',val('gmax'))">Ustaw</button></div>
       </div>
-      <p class="small">Komenda trafia do kolejki MySQL i wykonuje się w grze (co kilka sekund).</p>
-    </div>
+    </section>
 
-    <div class="card" style="grid-column:1/-1">
-      <h2>Gracze online</h2>
-      <table id="players"><thead><tr><th>Gracz</th><th>Drużyna</th><th>Status</th><th>Akcje</th></tr></thead><tbody></tbody></table>
-      <p class="small">Akcje wykonują się w grze w ciągu kilku sekund (kolejka MySQL).</p>
-    </div>
-
-    <div class="card">
-      <h2>Tryby specjalne</h2>
-      <div class="row"><span style="flex:1">Lucky Round</span>
-        <button class="sec" onclick="cfg('lucky.enabled','1')">ON</button>
-        <button class="sec" onclick="cfg('lucky.enabled','0')">OFF</button></div>
-      <div class="row"><span style="flex:1">Lucky szansa (0-1)</span>
-        <input id="luckychance" style="width:70px" placeholder="0.1">
-        <button onclick="cfg('lucky.chance',document.getElementById('luckychance').value)">Ustaw</button></div>
-      <div class="row"><span style="flex:1">Pistol Round</span>
-        <button class="sec" onclick="cfg('pistol.enabled','1')">ON</button>
-        <button class="sec" onclick="cfg('pistol.enabled','0')">OFF</button></div>
-      <div class="row"><span style="flex:1">Pistol co X rund</span>
-        <input id="pistolx" style="width:70px" placeholder="5">
-        <button onclick="cfg('pistol.everyx',document.getElementById('pistolx').value)">Ustaw</button></div>
-      <div class="row"><span style="flex:1">Ekran końca meczu</span>
-        <button class="sec" onclick="cfg('endscreen.enabled','1')">ON</button>
-        <button class="sec" onclick="cfg('endscreen.enabled','0')">OFF</button></div>
-      <div class="row" style="margin-top:8px">
-        <button onclick="forceRound('lucky')">🎲 Wymuś Lucky (nast. runda)</button>
-        <button onclick="forceRound('pistol')">🔫 Wymuś Pistol (nast. runda)</button>
+    <!-- MAPS / VOTE -->
+    <section class="tab" id="tab-maps">
+      <div class="card">
+        <h2>Głosowanie na mapę</h2>
+        <div class="row"><span>RTV (w trakcie gry)</span>
+          <button class="btn sec" onclick="cfg('mapvote.allowrtv','1')">ON</button>
+          <button class="btn sec" onclick="cfg('mapvote.allowrtv','0')">OFF</button></div>
+        <div class="row"><span>Głosowanie po meczu</span>
+          <button class="btn sec" onclick="cfg('autoendvote.enabled','1')">ON</button>
+          <button class="btn sec" onclick="cfg('autoendvote.enabled','0')">OFF</button></div>
       </div>
-    </div>
+      <div class="card">
+        <h2>Zmiana mapy</h2>
+        <div class="row">
+          <select id="mapSel2"></select>
+          <button class="btn" onclick="confirmDo('Zmienić mapę?',()=>changeMap('mapSel2'))">Zmień teraz</button>
+        </div>
+      </div>
+    </section>
 
-    <div class="card">
-      <h2>Ranking (TOP)</h2>
-      <table id="top"><thead><tr><th>#</th><th>Gracz</th><th>K</th><th>D</th><th>HS%</th></tr></thead><tbody></tbody></table>
-    </div>
+    <!-- SPECIAL ROUNDS -->
+    <section class="tab" id="tab-special">
+      <div class="card">
+        <h2>Lucky Round</h2>
+        <div class="row"><span>Włączony</span>
+          <button class="btn sec" onclick="cfg('lucky.enabled','1')">ON</button>
+          <button class="btn sec" onclick="cfg('lucky.enabled','0')">OFF</button></div>
+        <div class="row"><span>Szansa (0-1)</span>
+          <input id="luckychance" style="width:70px" placeholder="0.1">
+          <button class="btn" onclick="cfg('lucky.chance',val('luckychance'))">Ustaw</button></div>
+        <div class="row"><button class="btn" onclick="forceRound('lucky')">🎲 Wymuś na następną rundę</button></div>
+      </div>
+      <div class="card">
+        <h2>Pistol Round</h2>
+        <div class="row"><span>Włączony</span>
+          <button class="btn sec" onclick="cfg('pistol.enabled','1')">ON</button>
+          <button class="btn sec" onclick="cfg('pistol.enabled','0')">OFF</button></div>
+        <div class="row"><span>Co X rund</span>
+          <input id="pistolx" style="width:70px" placeholder="5">
+          <button class="btn" onclick="cfg('pistol.everyx',val('pistolx'))">Ustaw</button></div>
+        <div class="row"><button class="btn" onclick="forceRound('pistol')">🔫 Wymuś na następną rundę</button></div>
+      </div>
+      <div class="card">
+        <h2>Inne tryby</h2>
+        <div class="row"><span>Ekran końca meczu</span>
+          <button class="btn sec" onclick="cfg('endscreen.enabled','1')">ON</button>
+          <button class="btn sec" onclick="cfg('endscreen.enabled','0')">OFF</button></div>
+      </div>
+    </section>
 
-    <div class="card">
-      <h2>Historia komend</h2>
-      <table id="hist"><thead><tr><th>#</th><th>Komenda</th><th>Status</th></tr></thead><tbody></tbody></table>
-    </div>
+    <!-- PLAYERS -->
+    <section class="tab" id="tab-players">
+      <div class="card wide">
+        <h2>Gracze online</h2>
+        <table id="players"><thead><tr><th>Gracz</th><th>Drużyna</th><th>Status</th><th>Akcje</th></tr></thead><tbody></tbody></table>
+        <p class="small">Akcje wykonują się w grze w ciągu kilku sekund.</p>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <section class="tab" id="tab-stats">
+      <div class="card wide">
+        <h2>StatTrak</h2>
+        <div class="row"><span>Liczniki broni</span>
+          <button class="btn sec" onclick="cfg('stattrak.enabled','1')">ON</button>
+          <button class="btn sec" onclick="cfg('stattrak.enabled','0')">OFF</button>
+          <button class="btn danger" onclick="confirmDo('Zresetować StatTrak WSZYSTKIM?',()=>resetStattrak('all'))">Reset wszystkim</button></div>
+      </div>
+      <div class="card wide">
+        <h2>Ranking (TOP) — klik = pojedynki PvP</h2>
+        <table id="top"><thead><tr><th>#</th><th>Gracz</th><th>K</th><th>D</th><th>HS%</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- CONSOLE -->
+    <section class="tab" id="tab-console">
+      <div class="card wide">
+        <h2>Dowolna komenda</h2>
+        <div class="row">
+          <input id="cmd" placeholder="np. css_scramble / changelevel de_nuke" style="flex:1">
+          <button class="btn" onclick="sendCmd()">Wyślij</button>
+        </div>
+        <p class="small">Komenda trafia do kolejki MySQL i wykonuje się w grze (whitelista po stronie pluginu).</p>
+      </div>
+      <div class="card wide">
+        <h2>Historia komend</h2>
+        <table id="hist"><thead><tr><th>#</th><th>Komenda</th><th>Status</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
   </main>
 
-  <div id="modal">
-    <div class="box">
-      <button class="sec close" onclick="closeModal()">Zamknij</button>
-      <h3 id="modalTitle">Pojedynki</h3>
-      <table id="duels"><thead><tr><th>Przeciwnik</th><th>Zabójstwa</th><th>Śmierci</th><th>Bilans</th></tr></thead><tbody></tbody></table>
-    </div>
-  </div>
+  <div id="modal"><div class="box">
+    <button class="btn sec" style="float:right" onclick="closeModal()">Zamknij</button>
+    <h3 id="modalTitle">Pojedynki</h3>
+    <table id="duels"><thead><tr><th>Przeciwnik</th><th>Zab.</th><th>Śmierci</th><th>Bilans</th></tr></thead><tbody></tbody></table>
+  </div></div>
+  <div id="toast"></div>
 
   <script>
-    async function api(path, opts) {
-      const r = await fetch(path, opts);
-      if (r.status === 401) { location.href = '/login'; return null; }
-      return r.json();
-    }
-    async function post(path, body) {
-      return api(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
-    }
-    function cmd(c) { post('/api/command', { command: c }).then(refreshHistory); }
-    function sendCmd() { const v = document.getElementById('cmd').value.trim(); if (v) { post('/api/command',{command:v}).then(()=>{document.getElementById('cmd').value='';refreshHistory();}); } }
-    function changeMap() { post('/api/changemap', { map: document.getElementById('mapSel').value }).then(refreshHistory); }
-    function cfg(key, value) { if (value===''||value==null) return; post('/api/setcfg', { key, value }).then(refreshHistory); }
-    function saveConfig() { post('/api/config/save', {}).then(refreshHistory); }
-    function forceRound(type) { post('/api/specialround', { type }).then(refreshHistory); }
-
-    async function refreshStatus() {
-      const d = await api('/api/status'); if (!d) return;
-      const s = d.status;
-      document.getElementById('status').textContent = s
-        ? `Mapa: ${s.map} · Gracze: ${s.players}/${s.max_players} · ${new Date(s.updated_at).toLocaleTimeString()}`
-        : 'Brak danych statusu (czy plugin działa i RemoteControl=on?)';
-    }
-    async function refreshTop() {
-      const d = await api('/api/top?limit=25'); if (!d) return;
-      const hs = p => p.kills ? Math.round(p.headshots/p.kills*100) : 0;
-      document.querySelector('#top tbody').innerHTML = d.players.map((p,i)=>
-        `<tr class="clickable" onclick="showDuels('${p.steam_id}','${escapeHtml(p.name)}')">`+
-        `<td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${hs(p)}%</td></tr>`).join('');
-    }
-
-    async function showDuels(steamId, name) {
-      const d = await api('/api/duels?steamId='+encodeURIComponent(steamId)); if (!d) return;
-      document.getElementById('modalTitle').textContent = 'Pojedynki: ' + name;
-      const body = document.querySelector('#duels tbody');
-      if (!d.duels.length) {
-        body.innerHTML = '<tr><td colspan="4" class="small">Brak danych pojedynków.</td></tr>';
-      } else {
-        body.innerHTML = d.duels.map(x=>{
-          const diff = x.kills - x.deaths;
-          const col = diff>0?'#40ff40':diff<0?'#ff5555':'#ffd000';
-          return `<tr><td>${escapeHtml(x.opp_name)}</td><td>${x.kills}</td><td>${x.deaths}</td>`+
-                 `<td style="color:${col}">${diff>0?'+':''}${diff}</td></tr>`;
-        }).join('');
-      }
-      document.getElementById('modal').style.display = 'flex';
-    }
-    function closeModal(){ document.getElementById('modal').style.display='none'; }
-    async function refreshHistory() {
-      const d = await api('/api/history'); if (!d) return;
-      document.querySelector('#hist tbody').innerHTML = d.commands.map(c=>
-        `<tr><td>${c.id}</td><td>${escapeHtml(c.command)}</td><td>${c.status}</td></tr>`).join('');
-    }
-    function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-
+    const MAPS = ['de_inferno','de_mirage','de_dust2','de_cache','de_nuke','de_ancient','de_anubis'];
     const TEAM = { 1:'Widz', 2:'T', 3:'CT' };
-    function playerAction(steamId, action) {
-      post('/api/player', { steamId, action }).then(()=>setTimeout(refreshPlayers, 600));
-    }
-    async function refreshPlayers() {
-      const d = await api('/api/players'); if (!d) return;
-      const acts = [
-        ['Kick','kick'],['Slay','slay'],['Respawn','respawn'],
-        ['→T','t'],['→CT','ct'],['→Spec','spec'],
-        ['God','god'],['UnGod','ungod'],['Freeze','freeze'],['UnFreeze','unfreeze'],
-        ['Noclip','noclip'],['LowGrav','lowgrav'],['Speed','speed'],
-        ['Mały','small'],['Duży','big'],['Gigant','giant'],['Norm','normsize']
-      ];
-      document.querySelector('#players tbody').innerHTML = d.players.map(p=>{
-        const buttons = acts.map(([label,a])=>
-          `<button class="sec" style="padding:4px 7px;font-size:12px" onclick="playerAction('${p.steam_id}','${a}')">${label}</button>`).join(' ');
-        const pvp = `<button style="padding:4px 7px;font-size:12px" onclick="showDuels('${p.steam_id}','${escapeHtml(p.name)}')">PvP</button> `;
-        return `<tr><td>${escapeHtml(p.name)}</td><td>${TEAM[p.team]||'-'}</td>`+
-               `<td>${p.alive?'żywy':'martwy'}</td><td>${pvp}${buttons}</td></tr>`;
-      }).join('') || '<tr><td colspan="4" class="small">Brak graczy / brak danych.</td></tr>';
-    }
+    const TOGGLES = [
+      ['instadefuse.enabled','Instadefuse'],['weapon.enabled','Przydział broni'],
+      ['weapon.allowpreferences','Wybór broni (!guns)'],['weapon.allowsnipers','Snajperki'],
+      ['stats.enabled','Statystyki PvP'],['hud.enabled','HUD (bomba/serie)'],
+      ['automessage.enabled','Auto-wiadomości'],['fun.enabled','Tryby fun']
+    ];
 
-    function refreshAll(){ refreshStatus(); refreshTop(); refreshHistory(); refreshPlayers(); }
+    function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+    function val(id){return document.getElementById(id).value.trim();}
+    function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2500);}
+    function confirmDo(q,fn){ if(confirm(q)) fn(); }
+
+    async function api(p,o){const r=await fetch(p,o);if(r.status===401){location.href='/login';return null;}return r.json();}
+    async function post(p,b){const r=await api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});if(r&&r.ok)toast('OK');else if(r&&r.error)toast('Błąd: '+r.error);return r;}
+
+    function cmd(c){post('/api/command',{command:c}).then(refreshHistory);}
+    function sendCmd(){const v=val('cmd');if(v){post('/api/command',{command:v}).then(()=>{document.getElementById('cmd').value='';refreshHistory();});}}
+    function changeMap(sel){const m=document.getElementById(sel||'mapSel').value;post('/api/changemap',{map:m}).then(refreshHistory);}
+    function cfg(k,v){if(v===''||v==null)return;post('/api/setcfg',{key:k,value:v}).then(refreshHistory);}
+    function saveConfig(){post('/api/config/save',{}).then(refreshHistory);}
+    function forceRound(t){post('/api/specialround',{type:t}).then(refreshHistory);}
+    function resetStattrak(t){post('/api/stattrak/reset',{target:t}).then(refreshHistory);}
+    function playerAction(id,a){post('/api/player',{steamId:id,action:a}).then(()=>setTimeout(refreshPlayers,600));}
+
+    // tabs
+    document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+      document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      document.getElementById('tab-'+b.dataset.tab).classList.add('active');
+    });
+
+    // populate map selects + toggles once
+    for (const id of ['mapSel','mapSel2']) { const s=document.getElementById(id); if(s) s.innerHTML=MAPS.map(m=>`<option>${m}</option>`).join(''); }
+    document.getElementById('toggles').innerHTML = TOGGLES.map(([k,l])=>
+      `<div class="row"><span>${l}</span><button class="btn sec" onclick="cfg('${k}','1')">ON</button><button class="btn sec" onclick="cfg('${k}','0')">OFF</button></div>`).join('');
+
+    async function refreshStatus(){
+      const d=await api('/api/status'); if(!d)return; const s=d.status;
+      const txt = s ? `Mapa: ${s.map} · Gracze: ${s.players}/${s.max_players}` : 'Brak danych statusu';
+      document.getElementById('status').textContent = txt + (s?` · ${new Date(s.updated_at).toLocaleTimeString()}`:'');
+      document.getElementById('dash').innerHTML = s
+        ? `<div class="stat"><span>Mapa</span><b>${esc(s.map)}</b></div>`+
+          `<div class="stat"><span>Gracze</span><b>${s.players}/${s.max_players}</b></div>`+
+          `<div class="stat"><span>Ostatnia aktualizacja</span><b>${new Date(s.updated_at).toLocaleString()}</b></div>`
+        : 'Brak danych — czy plugin działa i RemoteControl=on?';
+    }
+    async function refreshTop(){
+      const d=await api('/api/top?limit=25'); if(!d)return;
+      const hs=p=>p.kills?Math.round(p.headshots/p.kills*100):0;
+      document.querySelector('#top tbody').innerHTML=d.players.map((p,i)=>
+        `<tr class="clickable" onclick="showDuels('${p.steam_id}','${esc(p.name)}')"><td>${i+1}</td><td>${esc(p.name)}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${hs(p)}%</td></tr>`).join('')
+        || '<tr><td colspan="5" class="small">Brak danych.</td></tr>';
+    }
+    async function refreshPlayers(){
+      const d=await api('/api/players'); if(!d)return;
+      const acts=[['Kick','kick'],['Slay','slay'],['Respawn','respawn'],['→T','t'],['→CT','ct'],['→Spec','spec'],['God','god'],['Freeze','freeze'],['Noclip','noclip'],['Mały','small'],['Duży','big'],['Gigant','giant']];
+      document.querySelector('#players tbody').innerHTML=d.players.map(p=>{
+        const b=acts.map(([l,a])=>`<button class="btn sec" style="padding:4px 7px;font-size:12px" onclick="playerAction('${p.steam_id}','${a}')">${l}</button>`).join(' ');
+        const pvp=`<button class="btn" style="padding:4px 7px;font-size:12px" onclick="showDuels('${p.steam_id}','${esc(p.name)}')">PvP</button> `;
+        return `<tr><td>${esc(p.name)}</td><td>${TEAM[p.team]||'-'}</td><td>${p.alive?'żywy':'martwy'}</td><td>${pvp}${b}</td></tr>`;
+      }).join('')||'<tr><td colspan="4" class="small">Brak graczy / brak danych.</td></tr>';
+    }
+    async function refreshHistory(){
+      const d=await api('/api/history'); if(!d)return;
+      document.querySelector('#hist tbody').innerHTML=d.commands.map(c=>`<tr><td>${c.id}</td><td>${esc(c.command)}</td><td>${c.status}</td></tr>`).join('');
+    }
+    async function showDuels(id,name){
+      const d=await api('/api/duels?steamId='+encodeURIComponent(id)); if(!d)return;
+      document.getElementById('modalTitle').textContent='Pojedynki: '+name;
+      const b=document.querySelector('#duels tbody');
+      b.innerHTML=d.duels.length?d.duels.map(x=>{const diff=x.kills-x.deaths;const c=diff>0?'#40ff40':diff<0?'#ff5555':'#ffd000';return `<tr><td>${esc(x.opp_name)}</td><td>${x.kills}</td><td>${x.deaths}</td><td style="color:${c}">${diff>0?'+':''}${diff}</td></tr>`;}).join(''):'<tr><td colspan="4" class="small">Brak danych.</td></tr>';
+      document.getElementById('modal').style.display='flex';
+    }
+    function closeModal(){document.getElementById('modal').style.display='none';}
+
+    function refreshAll(){refreshStatus();refreshTop();refreshHistory();refreshPlayers();}
     refreshAll();
-    setInterval(refreshStatus, 5000);
-    setInterval(refreshHistory, 5000);
-    setInterval(refreshPlayers, 5000);
-    setInterval(refreshTop, 15000);
+    setInterval(refreshStatus,5000); setInterval(refreshPlayers,5000);
+    setInterval(refreshHistory,6000); setInterval(refreshTop,15000);
   </script>
 </body>
 </html>

@@ -32,7 +32,10 @@ public class MySqlStatsRepository : IStatsRepository
 
         _table = $"{settings.TablePrefix}player_stats";
         _duelsTable = $"{settings.TablePrefix}duels";
+        _stattrakTable = $"{settings.TablePrefix}stattrak";
     }
+
+    private readonly string _stattrakTable;
 
     public async Task InitializeAsync()
     {
@@ -72,6 +75,76 @@ CREATE TABLE IF NOT EXISTS `{_duelsTable}` (
         {
             await duelsCmd.ExecuteNonQueryAsync();
         }
+
+        var stSql = $@"
+CREATE TABLE IF NOT EXISTS `{_stattrakTable}` (
+    `steam_id`   BIGINT UNSIGNED NOT NULL,
+    `weapon`     VARCHAR(64)     NOT NULL,
+    `kills`      INT             NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`steam_id`, `weapon`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+        await using (var stCmd = new MySqlCommand(stSql, connection))
+        {
+            await stCmd.ExecuteNonQueryAsync();
+        }
+    }
+
+    public async Task SaveStatTrakAsync(IReadOnlyCollection<StatTrakDelta> deltas)
+    {
+        if (deltas.Count == 0) return;
+
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        var sql = $@"
+INSERT INTO `{_stattrakTable}` (`steam_id`, `weapon`, `kills`)
+VALUES (@id, @w, @k)
+ON DUPLICATE KEY UPDATE `kills` = `kills` + VALUES(`kills`);";
+
+        foreach (var d in deltas)
+        {
+            await using var command = new MySqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("@id", d.SteamId);
+            command.Parameters.AddWithValue("@w", Truncate(d.Weapon, 64));
+            command.Parameters.AddWithValue("@k", d.Kills);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await transaction.CommitAsync();
+    }
+
+    public async Task<List<StatTrakRow>> GetStatTrakAsync(ulong steamId, int limit)
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var sql = $"SELECT `weapon`, `kills` FROM `{_stattrakTable}` WHERE `steam_id` = @id ORDER BY `kills` DESC LIMIT @lim;";
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@id", steamId);
+        command.Parameters.AddWithValue("@lim", limit);
+
+        var result = new List<StatTrakRow>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            result.Add(new StatTrakRow { Weapon = reader.GetString(0), Kills = reader.GetInt32(1) });
+        }
+        return result;
+    }
+
+    public async Task ResetStatTrakAsync(ulong steamId)
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var sql = steamId == 0
+            ? $"DELETE FROM `{_stattrakTable}`;"
+            : $"DELETE FROM `{_stattrakTable}` WHERE `steam_id` = @id;";
+        await using var command = new MySqlCommand(sql, connection);
+        if (steamId != 0) command.Parameters.AddWithValue("@id", steamId);
+        await command.ExecuteNonQueryAsync();
     }
 
     public async Task<PlayerStats?> LoadAsync(ulong steamId)

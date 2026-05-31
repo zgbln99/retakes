@@ -104,7 +104,7 @@ const CFG_KEYS = new Set([
   'mapvote.allowrtv', 'autoendvote.enabled', 'fun.enabled',
   'lucky.enabled', 'lucky.chance', 'lucky.minplayers',
   'pistol.enabled', 'pistol.everyx', 'pistol.minplayers',
-  'endscreen.enabled'
+  'endscreen.enabled', 'stattrak.enabled'
 ]);
 
 app.post('/api/setcfg', async (req, res) => {
@@ -127,6 +127,14 @@ app.post('/api/specialround', async (req, res) => {
   const type = String(req.body.type || '').trim().toLowerCase();
   if (type !== 'lucky' && type !== 'pistol') return res.status(400).json({ error: 'bad type' });
   try { await queueCommand(`css_rcon_specialround ${type}`); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Reset StatTrak for a player (steamId) or everyone ('all').
+app.post('/api/stattrak/reset', async (req, res) => {
+  const target = String(req.body.target || '').trim();
+  if (target !== 'all' && !/^\d{5,20}$/.test(target)) return res.status(400).json({ error: 'bad target' });
+  try { await queueCommand(`css_rcon_stattrak_reset ${target}`); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -32,6 +32,9 @@ public class StatsService
     // alongside the totals.
     private readonly Dictionary<(ulong killer, ulong victim), DuelDelta> _pendingDuels = new();
 
+    // Pending StatTrak deltas, keyed by (player, weapon).
+    private readonly Dictionary<(ulong steamId, string weapon), StatTrakDelta> _pendingStatTrak = new();
+
     private bool _databaseReady;
     private volatile bool _stopped;
 
@@ -42,15 +45,21 @@ public class StatsService
         _repository = repository;
     }
 
+    // Recording is gated by the IsEnabled toggle; reads/commands only need the DB.
     private bool Active => _settings.IsEnabled && _databaseReady && !_stopped;
 
-    public bool IsReady => Active;
+    /// <summary>True when the database is reachable — used by !rank/!top reads even
+    /// if recording is toggled off, and works after enabling stats from the panel.</summary>
+    public bool IsReady => _databaseReady && !_stopped;
 
     public void Initialize()
     {
-        if (!_settings.IsEnabled)
+        // Connect whenever the database is configured, regardless of the IsEnabled
+        // toggle — so enabling stats later (e.g. from the panel) works without a
+        // restart. IsEnabled only controls whether we record.
+        if (!Stats.DbConnectionFactory.IsConfigured(_settings.Database))
         {
-            Utils.Logger.LogInfo("Stats", "Stats disabled in config");
+            Utils.Logger.LogInfo("Stats", "Stats database not configured");
             return;
         }
 
@@ -139,6 +148,19 @@ public class StatsService
                     duel.Kills++;
                     if (@event.Headshot) duel.Headshots++;
                 }
+
+                // StatTrak: count this kill for the weapon used.
+                var weapon = @event.Weapon;
+                if (_settings.StatTrak.Enabled && !string.IsNullOrEmpty(weapon))
+                {
+                    var stKey = (attackerId, weapon);
+                    if (!_pendingStatTrak.TryGetValue(stKey, out var st))
+                    {
+                        st = new StatTrakDelta { SteamId = attackerId, Weapon = weapon };
+                        _pendingStatTrak[stKey] = st;
+                    }
+                    st.Kills++;
+                }
             }
 
             if (assisterId != 0 && assisterId != attackerId && assisterId != victimId)
@@ -200,6 +222,14 @@ public class StatsService
     /// <summary>One player's PvP record vs every opponent they fought.</summary>
     public async Task<List<DuelRow>> GetDuelsAsync(ulong steamId) =>
         await _repository.GetDuelsAsync(steamId);
+
+    /// <summary>A player's StatTrak weapon counters.</summary>
+    public async Task<List<StatTrakRow>> GetStatTrakAsync(ulong steamId, int limit) =>
+        await _repository.GetStatTrakAsync(steamId, limit);
+
+    /// <summary>Reset a player's StatTrak (or all if steamId is 0).</summary>
+    public async Task ResetStatTrakAsync(ulong steamId) =>
+        await _repository.ResetStatTrakAsync(steamId);
     #endregion
 
     private void FlushDirty()
@@ -208,6 +238,7 @@ public class StatsService
 
         List<PlayerStats> snapshot;
         List<DuelDelta> duelSnapshot;
+        List<StatTrakDelta> statTrakSnapshot;
         lock (_lock)
         {
             snapshot = _cache.Values.Where(s => s is { IsDirty: true, Loaded: true }).Select(Clone).ToList();
@@ -227,9 +258,17 @@ public class StatsService
                 Headshots = d.Headshots
             }).ToList();
             _pendingDuels.Clear();
+
+            statTrakSnapshot = _pendingStatTrak.Values.Select(s => new StatTrakDelta
+            {
+                SteamId = s.SteamId,
+                Weapon = s.Weapon,
+                Kills = s.Kills
+            }).ToList();
+            _pendingStatTrak.Clear();
         }
 
-        if (snapshot.Count == 0 && duelSnapshot.Count == 0) return;
+        if (snapshot.Count == 0 && duelSnapshot.Count == 0 && statTrakSnapshot.Count == 0) return;
 
         Task.Run(async () =>
         {
@@ -237,6 +276,7 @@ public class StatsService
             {
                 if (snapshot.Count > 0) await _repository.SaveBatchAsync(snapshot);
                 if (duelSnapshot.Count > 0) await _repository.SaveDuelsAsync(duelSnapshot);
+                if (statTrakSnapshot.Count > 0) await _repository.SaveStatTrakAsync(statTrakSnapshot);
             }
             catch (Exception ex)
             {
