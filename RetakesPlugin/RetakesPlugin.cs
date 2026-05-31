@@ -330,6 +330,25 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             }
         }
 
+        // Per-player actions submenu (slay / kick / move).
+        var playerMenu = new AdminPlayerMenu(_menuService!);
+        _adminMenuService.RegisterSubmenu(new AdminSubmenu
+        {
+            DisplayName = "Akcje na graczu (slay/kick/move)",
+            Open = playerMenu.Open
+        });
+
+        // Change map now submenu (direct changelevel, freezes plugin first).
+        if (_mapVoteService != null)
+        {
+            var changeMapMenu = new AdminChangeMapMenu(_menuService!, Config.MapVote, BeginMapChange);
+            _adminMenuService.RegisterSubmenu(new AdminSubmenu
+            {
+                DisplayName = "Zmień mapę teraz",
+                Open = changeMapMenu.Open
+            });
+        }
+
         // Round actions (reuse existing registered commands / direct callbacks).
         _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Wymieszaj drużyny (następna runda)", Command = "css_scramble" });
         _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Wymuś bombsite A", Command = "css_forcebombsite A" });
