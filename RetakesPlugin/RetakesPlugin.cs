@@ -10,8 +10,10 @@ using RetakesPlugin.Configs;
 using RetakesPlugin.Configs.JsonConverters;
 using RetakesPlugin.Events;
 using RetakesPlugin.Managers;
+using RetakesPlugin.Models;
 using RetakesPlugin.Modules;
 using RetakesPlugin.Services;
+using RetakesPlugin.Services.Stats;
 using RetakesPlugin.Utils;
 
 using RetakesPlugin.Commands.Admin;
@@ -56,8 +58,15 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private RoundEventHandlers? _roundEventHandlers;
     private PlayerEventHandlers? _playerEventHandlers;
 
+    // Extended feature services
+    private InstadefuseService? _instadefuseService;
+    private AdminMenuService? _adminMenuService;
+    private WeaponAllocationService? _weaponAllocationService;
+    private StatsService? _statsService;
+
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
+    public WeaponAllocationService? WeaponAllocation => _weaponAllocationService;
     #endregion
 
     #region Commands
@@ -127,6 +136,36 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         RegisterEventHandler<EventPlayerDisconnect>(OnPlayerDisconnect, HookMode.Pre);
         RegisterEventHandler<EventPlayerTeam>(OnPlayerTeam, HookMode.Pre);
 
+        // Built-in instadefuse (adapted from B3none/cs2-instadefuse, GPL-3.0 — see NOTICE)
+        _instadefuseService = new InstadefuseService(Config.Instadefuse);
+        RegisterEventHandler<EventGrenadeThrown>(OnGrenadeThrown);
+        RegisterEventHandler<EventInfernoStartburn>(OnInfernoStartBurn);
+        RegisterEventHandler<EventInfernoExtinguish>(OnInfernoExtinguish);
+        RegisterEventHandler<EventInfernoExpire>(OnInfernoExpire);
+        RegisterEventHandler<EventHegrenadeDetonate>(OnHeGrenadeDetonate);
+        RegisterEventHandler<EventMolotovDetonate>(OnMolotovDetonate);
+        RegisterEventHandler<EventBombBegindefuse>(OnBombBeginDefuse);
+
+        // Built-in weapon allocator (random allocation + !guns preferences)
+        _weaponAllocationService = new WeaponAllocationService(Config.Weapon, _random);
+        var gunsCommand = new GunsCommand(this, _weaponAllocationService);
+        AddCommand("css_guns", "Choose your preferred weapons.", gunsCommand.OnCommand);
+        AddCommand("css_gun", "Choose your preferred weapons.", gunsCommand.OnCommand);
+        AddCommand("css_weapon", "Choose your preferred weapons.", gunsCommand.OnCommand);
+
+        // PvP statistics (MySQL). Disabled until configured; fails safe if the DB is down.
+        var statsRepository = new MySqlStatsRepository(Config.Stats.Database);
+        _statsService = new StatsService(this, Config.Stats, statsRepository);
+        _statsService.Initialize();
+        var rankCommand = new RankCommand(_statsService);
+        var topCommand = new TopCommand(_statsService);
+        AddCommand("css_rank", "Show your PvP stats.", rankCommand.OnCommand);
+        AddCommand("css_stats", "Show your PvP stats.", rankCommand.OnCommand);
+        AddCommand("css_top", "Show the PvP leaderboard.", topCommand.OnCommand);
+
+        // In-game admin panel (GUI) + runtime feature toggles
+        SetupAdminMenu();
+
         if (hotReload)
         {
             Utils.Logger.LogServer($"Update detected, restarting map...");
@@ -135,6 +174,67 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         Utils.Logger.LogInfo("Main", "Plugin loaded successfully");
     }
+
+    #region Admin Panel
+    private void SetupAdminMenu()
+    {
+        if (!Config.AdminMenu.IsEnabled)
+        {
+            Utils.Logger.LogInfo("AdminMenu", "Admin panel is disabled in config");
+            return;
+        }
+
+        _adminMenuService = new AdminMenuService(this, Config.AdminMenu);
+
+        // Feature toggles (bound live to the config object the services read from).
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "instadefuse",
+            DisplayName = "Instadefuse",
+            Get = () => Config.Instadefuse.IsEnabled,
+            Set = value => Config.Instadefuse.IsEnabled = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "weapons",
+            DisplayName = "Weapon allocator",
+            Get = () => Config.Weapon.IsEnabled,
+            Set = value => Config.Weapon.IsEnabled = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "weapon_preferences",
+            DisplayName = "Weapon preferences (!guns)",
+            Get = () => Config.Weapon.AllowPreferences,
+            Set = value => Config.Weapon.AllowPreferences = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "stats",
+            DisplayName = "PvP stats recording",
+            Get = () => Config.Stats.IsEnabled,
+            Set = value => Config.Stats.IsEnabled = value
+        });
+
+        // Round actions (reuse existing registered commands).
+        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Scramble teams (next round)", Command = "css_scramble" });
+        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Force bombsite A", Command = "css_forcebombsite A" });
+        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Force bombsite B", Command = "css_forcebombsite B" });
+        _adminMenuService.RegisterAction(new AdminAction { DisplayName = "Stop forcing bombsite", Command = "css_forcebombsitestop" });
+
+        var adminMenuCommand = new AdminMenuCommand(_adminMenuService);
+        foreach (var alias in Config.AdminMenu.OpenCommands)
+        {
+            var commandName = alias.StartsWith("css_") ? alias : $"css_{alias}";
+            AddCommand(commandName, "Opens the Retakes admin panel.", adminMenuCommand.OnCommand);
+        }
+
+        Utils.Logger.LogInfo("AdminMenu", "Admin panel initialized");
+    }
+    #endregion
 
     #region Map Initialization
     private void OnMapStart(string mapName)
@@ -307,6 +407,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
+        _instadefuseService?.ResetForNewRound();
         return _roundEventHandlers?.OnRoundStart(@event, info) ?? HookResult.Continue;
     }
 
@@ -339,8 +440,53 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private HookResult OnBombPlanted(EventBombPlanted @event, GameEventInfo info)
     {
+        _instadefuseService?.OnBombPlanted();
         return _roundEventHandlers?.OnBombPlanted(@event, info) ?? HookResult.Continue;
     }
+
+    #region Instadefuse Event Handlers
+    private HookResult OnGrenadeThrown(EventGrenadeThrown @event, GameEventInfo info)
+    {
+        _instadefuseService?.OnGrenadeThrown(@event.Weapon);
+        return HookResult.Continue;
+    }
+
+    private HookResult OnInfernoStartBurn(EventInfernoStartburn @event, GameEventInfo info)
+    {
+        _instadefuseService?.OnInfernoStartBurn(@event.X, @event.Y, @event.Z, @event.Entityid);
+        return HookResult.Continue;
+    }
+
+    private HookResult OnInfernoExtinguish(EventInfernoExtinguish @event, GameEventInfo info)
+    {
+        _instadefuseService?.OnInfernoGone(@event.Entityid);
+        return HookResult.Continue;
+    }
+
+    private HookResult OnInfernoExpire(EventInfernoExpire @event, GameEventInfo info)
+    {
+        _instadefuseService?.OnInfernoGone(@event.Entityid);
+        return HookResult.Continue;
+    }
+
+    private HookResult OnHeGrenadeDetonate(EventHegrenadeDetonate @event, GameEventInfo info)
+    {
+        _instadefuseService?.OnHeDetonate();
+        return HookResult.Continue;
+    }
+
+    private HookResult OnMolotovDetonate(EventMolotovDetonate @event, GameEventInfo info)
+    {
+        _instadefuseService?.OnMolotovDetonate();
+        return HookResult.Continue;
+    }
+
+    private HookResult OnBombBeginDefuse(EventBombBegindefuse @event, GameEventInfo info)
+    {
+        _instadefuseService?.OnBombBeginDefuse(@event.Userid);
+        return HookResult.Continue;
+    }
+    #endregion
 
     private HookResult OnBombDefused(EventBombDefused @event, GameEventInfo info)
     {
