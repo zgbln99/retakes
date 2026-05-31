@@ -1,0 +1,29 @@
+retakes — extended CS2 retakes plugin
+======================================
+
+This project is a derivative work built on top of the following GPL-3.0
+licensed projects by B3none. Huge thanks to the original authors.
+
+1) cs2-retakes
+   - Author:   B3none (and contributors)
+   - Source:   https://github.com/b3none/cs2-retakes
+   - License:  GNU General Public License v3.0
+   - Note:     The CS2 retakes implementation is based on the CS:GO version
+               by Splewis (https://github.com/splewis/csgo-retakes).
+   - Usage:    The entire RetakesPlugin/ and RetakesPluginShared/ trees are
+               imported from this project and extended.
+
+2) cs2-instadefuse
+   - Author:   B3none
+   - Source:   https://github.com/B3none/cs2-instadefuse
+   - License:  GNU General Public License v3.0
+   - Usage:    The instadefuse logic in
+               RetakesPlugin/Services/InstadefuseService.cs is ported and
+               adapted from this project and integrated as a built-in feature.
+
+Because the upstream projects are licensed under the GPL-3.0, this combined
+and extended work is also distributed under the GPL-3.0. See the LICENSE file
+for the full license text.
+
+Changes made on top of the upstream projects are documented in commit history
+and in README.md.

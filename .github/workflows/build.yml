@@ -1,0 +1,56 @@
+name: Build Retakes
+
+on:
+  push:
+    branches: [ "main", "claude/**" ]
+    paths:
+      - '**.cs'
+      - '**.csproj'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - '**.cs'
+      - '**.csproj'
+      - '.github/workflows/build.yml'
+  release:
+    types:
+      - created
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build RetakesPluginShared
+        run: dotnet build RetakesPluginShared/RetakesPluginShared.csproj -c Release
+
+      - name: Build RetakesPlugin
+        run: dotnet build RetakesPlugin/RetakesPlugin.csproj -c Release
+
+      - name: Create output directory with complete structure
+        run: |
+          mkdir -p output/addons/counterstrikesharp/plugins/RetakesPlugin
+          mkdir -p output/addons/counterstrikesharp/shared/RetakesPluginShared
+
+          cp ./RetakesPlugin/bin/Release/net8.0/RetakesPlugin.dll output/addons/counterstrikesharp/plugins/RetakesPlugin/
+          cp ./RetakesPlugin/bin/Release/net8.0/RetakesPlugin.pdb output/addons/counterstrikesharp/plugins/RetakesPlugin/
+          cp -r ./RetakesPlugin/map_config output/addons/counterstrikesharp/plugins/RetakesPlugin/
+          cp -r ./RetakesPlugin/lang output/addons/counterstrikesharp/plugins/RetakesPlugin/
+
+          cp ./RetakesPluginShared/bin/Release/net8.0/RetakesPluginShared.dll output/addons/counterstrikesharp/shared/RetakesPluginShared/
+          cp ./RetakesPluginShared/bin/Release/net8.0/RetakesPluginShared.pdb output/addons/counterstrikesharp/shared/RetakesPluginShared/
+          cp ./RetakesPluginShared/bin/Release/net8.0/RetakesPluginShared.deps.json output/addons/counterstrikesharp/shared/RetakesPluginShared/
+
+      - name: Publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Retakes-${{ github.sha }}
+          path: output
