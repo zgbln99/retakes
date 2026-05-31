@@ -152,6 +152,13 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         // Built-in weapon allocator (random allocation + !guns preferences)
         _weaponAllocationService = new WeaponAllocationService(Config.Weapon, _random);
+        // Persist preferences in the same MySQL database as stats, whenever the DB
+        // is configured (independent of the stats feature toggle).
+        if (!string.IsNullOrWhiteSpace(Config.Stats.Database.Host))
+        {
+            _weaponAllocationService.AttachRepository(
+                new MySqlWeaponPreferenceRepository(Config.Stats.Database));
+        }
         var gunsCommand = new GunsCommand(this, _weaponAllocationService);
         AddCommand("css_guns", "Choose your preferred weapons.", gunsCommand.OnCommand);
         AddCommand("css_gun", "Choose your preferred weapons.", gunsCommand.OnCommand);
@@ -457,6 +464,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         if (player is { IsValid: true, IsBot: false })
         {
             _statsService?.OnPlayerConnect(player.SteamID, player.PlayerName);
+            _weaponAllocationService?.LoadPreference(player.SteamID);
         }
 
         return _playerEventHandlers?.OnPlayerConnectFull(@event, info) ?? HookResult.Continue;

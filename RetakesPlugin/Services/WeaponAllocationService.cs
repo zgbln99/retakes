@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using RetakesPlugin.Configs;
 using RetakesPlugin.Models;
+using RetakesPlugin.Services.Stats;
 
 namespace RetakesPlugin.Services;
 
@@ -18,6 +19,10 @@ public class WeaponAllocationService
     private readonly WeaponSettings _settings;
     private readonly Random _random;
     private readonly ConcurrentDictionary<ulong, WeaponPreference> _preferences = new();
+
+    // Optional persistence (shares the stats MySQL database). Null = memory only.
+    private IWeaponPreferenceRepository? _repository;
+    private bool _persistenceReady;
 
     public WeaponAllocationService(WeaponSettings settings, Random random)
     {
@@ -203,6 +208,79 @@ public class WeaponAllocationService
 
     private string Pick(IReadOnlyList<string> list) => list[_random.Next(list.Count)];
 
+    #region Persistence (weapon preferences in MySQL)
+    /// <summary>
+    /// Attaches a repository and initializes its schema asynchronously. If the
+    /// database is unreachable, persistence is disabled and the in-memory cache is
+    /// still used for the current session.
+    /// </summary>
+    public void AttachRepository(IWeaponPreferenceRepository repository)
+    {
+        _repository = repository;
+        Task.Run(async () =>
+        {
+            try
+            {
+                await repository.InitializeAsync();
+                _persistenceReady = true;
+                Utils.Logger.LogInfo("Weapons", "Weapon preference storage initialized");
+            }
+            catch (Exception ex)
+            {
+                _persistenceReady = false;
+                Utils.Logger.LogWarning("Weapons", $"Preference storage init failed (memory only): {ex.Message}");
+            }
+        });
+    }
+
+    /// <summary>Loads a player's saved preference into the cache (call on connect).</summary>
+    public void LoadPreference(ulong steamId)
+    {
+        if (_repository == null || steamId == 0) return;
+
+        var repo = _repository;
+        Task.Run(async () =>
+        {
+            try
+            {
+                var loaded = await repo.LoadAsync(steamId);
+                if (loaded != null) _preferences[steamId] = loaded;
+            }
+            catch (Exception ex)
+            {
+                Utils.Logger.LogWarning("Weapons", $"Preference load failed for {steamId}: {ex.Message}");
+            }
+        });
+    }
+
+    /// <summary>Persists the player's current cached preference (call after a !guns change).</summary>
+    public void SavePreference(ulong steamId)
+    {
+        if (_repository == null || !_persistenceReady || steamId == 0) return;
+        if (!_preferences.TryGetValue(steamId, out var pref)) return;
+
+        var repo = _repository;
+        var snapshot = new WeaponPreference
+        {
+            TerroristRifle = pref.TerroristRifle,
+            CounterTerroristRifle = pref.CounterTerroristRifle,
+            PreferSniper = pref.PreferSniper
+        };
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                await repo.SaveAsync(steamId, snapshot);
+            }
+            catch (Exception ex)
+            {
+                Utils.Logger.LogWarning("Weapons", $"Preference save failed for {steamId}: {ex.Message}");
+            }
+        });
+    }
+    #endregion
+
     #region Preferences API (used by the !guns menu)
     public WeaponPreference? GetPreference(ulong steamId) =>
         _preferences.TryGetValue(steamId, out var pref) ? pref : null;
@@ -210,7 +288,26 @@ public class WeaponAllocationService
     public WeaponPreference GetOrCreatePreference(ulong steamId) =>
         _preferences.GetOrAdd(steamId, _ => new WeaponPreference());
 
-    public void ResetPreference(ulong steamId) => _preferences.TryRemove(steamId, out _);
+    public void ResetPreference(ulong steamId)
+    {
+        _preferences.TryRemove(steamId, out _);
+
+        if (_repository != null && _persistenceReady && steamId != 0)
+        {
+            var repo = _repository;
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await repo.DeleteAsync(steamId);
+                }
+                catch (Exception ex)
+                {
+                    Utils.Logger.LogWarning("Weapons", $"Preference delete failed for {steamId}: {ex.Message}");
+                }
+            });
+        }
+    }
 
     public void ClearPreference(ulong steamId) => ResetPreference(steamId);
 

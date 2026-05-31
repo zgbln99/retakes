@@ -54,6 +54,7 @@ public class GunsCommand
             {
                 var current = _weaponService.GetOrCreatePreference(p.SteamID);
                 current.PreferSniper = !current.PreferSniper;
+                _weaponService.SavePreference(p.SteamID);
                 p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Snajperka: " +
                               (current.PreferSniper ? $"{ChatColors.Green}TAK" : $"{ChatColors.Red}nie"));
                 OpenMainMenu(p);
@@ -101,6 +102,7 @@ public class GunsCommand
             var pref = _weaponService.GetOrCreatePreference(p.SteamID);
             if (team == CsTeam.Terrorist) pref.TerroristRifle = null;
             else pref.CounterTerroristRifle = null;
+            _weaponService.SavePreference(p.SteamID);
             p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Karabin {teamName}: {ChatColors.Gold}Losowo");
             OpenMainMenu(p);
         });
@@ -112,6 +114,7 @@ public class GunsCommand
                 var pref = _weaponService.GetOrCreatePreference(p.SteamID);
                 if (team == CsTeam.Terrorist) pref.TerroristRifle = rifle;
                 else pref.CounterTerroristRifle = rifle;
+                _weaponService.SavePreference(p.SteamID);
                 p.PrintToChat($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Karabin {teamName}: {ChatColors.Gold}{WeaponAllocationService.DisplayName(rifle)}");
                 OpenMainMenu(p);
             });
