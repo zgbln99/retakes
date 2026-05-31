@@ -31,11 +31,39 @@ rozszerzając je o dodatkowe funkcje. Pełna atrybucja w pliku [`NOTICE`](./NOTI
 - [x] Konfigurowalne pule broni + szansa na snajperkę
 - [x] Przełączniki broni w panelu admina
 
+✅ **Faza 4 — statystyki PvP (MySQL):**
+- [x] Zapis do **MySQL** (baza z DatHost) — K/D, HS%, asysty, rundy
+- [x] Komendy **`!rank`** (własne staty) i **`!top`** (ranking)
+- [x] Bezpieczne ładowanie z bazy (sesja nigdy nie nadpisze zapisanych statystyk)
+- [x] Cała baza I/O asynchronicznie — nie blokuje serwera; awaria DB nie psuje gry
+- [x] Przełącznik statystyk w panelu admina; CI dołącza `MySqlConnector.dll`
+
 🔜 **Kolejne fazy (zaplanowane):**
-- [ ] **Statystyki PvP** (K/D, HS%, kto-kogo) — zapis w **MySQL** (baza z DatHost); szkielet modułu już gotowy, do podłączenia
 - [ ] **Tryby fun** (symetryczne, jawne): glow dla wszystkich, one-shot dla wszystkich
 - [ ] **Boss / Juggernaut Mode** (1 vs reszta, jawnie ogłaszany)
 - [ ] **Panel webowy** (edycja configów na hoście)
+
+### Konfiguracja statystyk (MySQL / DatHost)
+
+W `RetakesPlugin.json` ustaw sekcję `StatsSettings` (dane z panelu „Databases" w DatHost):
+
+```json
+"StatsSettings": {
+  "IsEnabled": true,
+  "Database": {
+    "Host": "twoj-host.dathost.net",
+    "Port": 3306,
+    "User": "uzytkownik",
+    "Password": "haslo",
+    "Name": "nazwa_bazy",
+    "TablePrefix": "retakes_"
+  },
+  "FlushIntervalSeconds": 60.0,
+  "LeaderboardSize": 10
+}
+```
+
+> ⚠️ Nie commituj prawdziwych haseł do repo — wpisuj je w configu na serwerze.
 
 ## Wymagania
 

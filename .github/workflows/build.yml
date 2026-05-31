@@ -42,6 +42,8 @@ jobs:
 
           cp ./RetakesPlugin/bin/Release/net8.0/RetakesPlugin.dll output/addons/counterstrikesharp/plugins/RetakesPlugin/
           cp ./RetakesPlugin/bin/Release/net8.0/RetakesPlugin.pdb output/addons/counterstrikesharp/plugins/RetakesPlugin/
+          # Runtime dependency for the MySQL-backed stats module
+          cp ./RetakesPlugin/bin/Release/net8.0/MySqlConnector.dll output/addons/counterstrikesharp/plugins/RetakesPlugin/
           cp -r ./RetakesPlugin/map_config output/addons/counterstrikesharp/plugins/RetakesPlugin/
           cp -r ./RetakesPlugin/lang output/addons/counterstrikesharp/plugins/RetakesPlugin/
 

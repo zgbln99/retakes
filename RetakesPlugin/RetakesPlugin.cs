@@ -291,6 +291,12 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     #region Event Handlers
     private HookResult OnPlayerConnectFull(EventPlayerConnectFull @event, GameEventInfo info)
     {
+        var player = @event.Userid;
+        if (player is { IsValid: true, IsBot: false })
+        {
+            _statsService?.OnPlayerConnect(player.SteamID, player.PlayerName);
+        }
+
         return _playerEventHandlers?.OnPlayerConnectFull(@event, info) ?? HookResult.Continue;
     }
 
@@ -316,6 +322,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
+        _statsService?.OnRoundEnd();
         return _roundEventHandlers?.OnRoundEnd(@event, info) ?? HookResult.Continue;
     }
 
@@ -326,6 +333,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private HookResult OnPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
     {
+        _statsService?.OnPlayerDeath(@event);
         return _playerEventHandlers?.OnPlayerDeath(@event, info) ?? HookResult.Continue;
     }
 
@@ -341,6 +349,12 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
     private HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
+        var player = @event.Userid;
+        if (player is { IsValid: true, IsBot: false })
+        {
+            _statsService?.OnPlayerDisconnect(player.SteamID);
+        }
+
         return _playerEventHandlers?.OnPlayerDisconnect(@event, info) ?? HookResult.Continue;
     }
 

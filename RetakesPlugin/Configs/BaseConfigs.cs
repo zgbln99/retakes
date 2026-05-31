@@ -23,6 +23,18 @@ public class BaseConfigs : BasePluginConfig
     [JsonPropertyName("CommandsSettings")]
     public CommandsSettings Commands { get; set; } = new();
 
+    [JsonPropertyName("InstadefuseSettings")]
+    public InstadefuseSettings Instadefuse { get; set; } = new();
+
+    [JsonPropertyName("AdminMenuSettings")]
+    public AdminMenuSettings AdminMenu { get; set; } = new();
+
+    [JsonPropertyName("WeaponSettings")]
+    public WeaponSettings Weapon { get; set; } = new();
+
+    [JsonPropertyName("StatsSettings")]
+    public StatsSettings Stats { get; set; } = new();
+
     [JsonPropertyName("DebugSettings")]
     public DebugSettings Debug { get; set; } = new();
 
