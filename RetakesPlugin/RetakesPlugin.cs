@@ -417,6 +417,18 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             Set = value => Config.DamageReport.Enabled = value
         });
 
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "voice_global",
+            DisplayName = "Globalny czat głosowy (wszyscy się słyszą)",
+            Get = () => Config.Game.EnableGlobalVoiceChat,
+            Set = value =>
+            {
+                Config.Game.EnableGlobalVoiceChat = value;
+                Server.ExecuteCommand($"sv_full_alltalk {(value ? 1 : 0)}");
+            }
+        });
+
         // Weapon-set submenu (force a global loadout / back to random).
         if (_weaponAllocationService != null)
         {
@@ -521,7 +533,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _endGameScreenService?.ResetMatch();
         SpawnService.Reset();
 
-        AddTimer(1.0f, ServerHelper.ExecuteRetakesConfiguration);
+        AddTimer(1.0f, () => ServerHelper.ExecuteRetakesConfiguration(Config.Game.EnableGlobalVoiceChat));
 
         InitializeServices(mapName);
     }
@@ -920,6 +932,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             case "stattrak.enabled": Config.Stats.StatTrak.Enabled = B(); break;
             case "weapon.allowscout": Config.Weapon.AllowScout = B(); break;
             case "damagereport.enabled": Config.DamageReport.Enabled = B(); break;
+            case "voice.global":
+                Config.Game.EnableGlobalVoiceChat = B();
+                Server.ExecuteCommand($"sv_full_alltalk {(B() ? 1 : 0)}");
+                break;
             default: applied = false; break;
         }
 

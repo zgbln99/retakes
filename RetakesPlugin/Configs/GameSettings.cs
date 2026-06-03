@@ -15,4 +15,11 @@ public class GameSettings
 
     [JsonPropertyName("EnableFallbackAllocation")]
     public bool EnableFallbackAllocation { get; set; } = true;
+
+    /// <summary>
+    /// Global voice chat: everyone hears everyone regardless of team or alive/dead
+    /// state (sv_full_alltalk). When false, the normal retakes voice rules apply.
+    /// </summary>
+    [JsonPropertyName("EnableGlobalVoiceChat")]
+    public bool EnableGlobalVoiceChat { get; set; } = true;
 }

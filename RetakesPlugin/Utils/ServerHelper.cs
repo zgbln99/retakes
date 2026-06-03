@@ -8,7 +8,7 @@ public static class ServerHelper
     private static string RetakesCfgDirectory => Path.Combine(Server.GameDirectory, "csgo", "cfg", "cs2-retakes");
     private static string RetakesCfgPath => Path.Combine(RetakesCfgDirectory, "retakes.cfg");
 
-    public static void ExecuteRetakesConfiguration()
+    public static void ExecuteRetakesConfiguration(bool globalVoiceChat = false)
     {
         if (!File.Exists(RetakesCfgPath))
         {
@@ -23,6 +23,15 @@ public static class ServerHelper
         // changelevels crash the server).
         Server.ExecuteCommand("mp_endmatch_votenextmap 0");
         Server.ExecuteCommand("mp_match_end_changelevel 0");
+
+        // Global voice chat: everyone hears everyone (across teams, alive or dead).
+        if (globalVoiceChat)
+        {
+            Server.ExecuteCommand("sv_full_alltalk 1");
+            Server.ExecuteCommand("sv_talk_enemy_dead 1");
+            Server.ExecuteCommand("sv_talk_enemy_living 1");
+            Server.ExecuteCommand("sv_deadtalk 1");
+        }
 
         Logger.LogInfo("Server", "Retakes configuration executed");
     }
