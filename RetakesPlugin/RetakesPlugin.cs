@@ -73,6 +73,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private SpecialRoundsService? _specialRoundsService;
     private EndGameScreenService? _endGameScreenService;
     private DamageReportService? _damageReportService;
+    private BossService? _bossService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -252,6 +253,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         AddCommand("css_rcon_savecfg", "Persist current config to disk (used by the web panel).", OnRconSaveCfgCommand);
         // Force a special round next: css_rcon_specialround <lucky|pistol>
         AddCommand("css_rcon_specialround", "Force a special round next (web panel).", OnRconSpecialRoundCommand);
+        // Force boss next round: css_rcon_boss <steamid64|random>
+        AddCommand("css_rcon_boss", "Force a boss next round (web panel).", OnRconBossCommand);
         // Reset StatTrak: css_rcon_stattrak_reset <steamid64|all>
         AddCommand("css_rcon_stattrak_reset", "Reset StatTrak counters (web panel).", OnRconStatTrakResetCommand);
 
@@ -266,6 +269,9 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // FaceIt-style per-round damage report.
         _damageReportService = new DamageReportService(Config.DamageReport);
         RegisterEventHandler<EventPlayerHurt>(OnPlayerHurt);
+
+        // Boss / Juggernaut mode (quiet pick, recognizable on sight).
+        _bossService = new BossService(Config.Boss, _random);
 
         // Remote control bridge (web panel on a VPS via the shared MySQL database).
         _remoteControlService = new RemoteControlService(this, Config.RemoteControl, Config.Stats.Database, () => _isChangingMap);
@@ -427,6 +433,14 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
                 Config.Game.EnableGlobalVoiceChat = value;
                 Server.ExecuteCommand($"sv_full_alltalk {(value ? 1 : 0)}");
             }
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "boss",
+            DisplayName = "Tryb Boss (losowy boss co rundę)",
+            Get = () => Config.Boss.Enabled,
+            Set = value => Config.Boss.Enabled = value
         });
 
         // Weapon-set submenu (force a global loadout / back to random).
@@ -710,6 +724,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _specialRoundsService?.OnRoundStart();
         _endGameScreenService?.OnRoundStart();
         _damageReportService?.Reset();
+        _bossService?.ResetRound();
 
         // Re-apply the gravity cvar for the active fun mode (resets on map change).
         if (_adminFunModeMenu != null && _weaponAllocationService != null)
@@ -723,7 +738,11 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private HookResult OnRoundPostStart(EventRoundPoststart @event, GameEventInfo info)
     {
         if (_isChangingMap) return HookResult.Continue;
-        return _roundEventHandlers?.OnRoundPostStart(@event, info) ?? HookResult.Continue;
+        var result = _roundEventHandlers?.OnRoundPostStart(@event, info) ?? HookResult.Continue;
+        // Apply the boss AFTER weapon allocation (which sets HP/strips weapons),
+        // a moment later so pawns are fully set up.
+        AddTimer(0.2f, () => _bossService?.OnRoundStart());
+        return result;
     }
 
     private HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event, GameEventInfo info)
@@ -777,6 +796,17 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         if (_isChangingMap) return HookResult.Continue;
         _endGameScreenService?.OnPlayerHurt(@event);
         _damageReportService?.OnPlayerHurt(@event);
+
+        // Boss deals extra damage: apply the bonus to the victim's HP directly.
+        if (_bossService != null && _bossService.IsBossAttacker(@event.Attacker))
+        {
+            var victim = @event.Userid?.PlayerPawn.Value;
+            if (victim is { IsValid: true } && victim.Health > 0)
+            {
+                victim.Health = Math.Max(0, victim.Health - _bossService.ExtraDamage);
+                Utilities.SetStateChanged(victim, "CBaseEntity", "m_iHealth");
+            }
+        }
         return HookResult.Continue;
     }
 
@@ -936,6 +966,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
                 Config.Game.EnableGlobalVoiceChat = B();
                 Server.ExecuteCommand($"sv_full_alltalk {(B() ? 1 : 0)}");
                 break;
+            case "boss.enabled": Config.Boss.Enabled = B(); break;
             default: applied = false; break;
         }
 
@@ -991,6 +1022,19 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             case "lucky": _specialRoundsService.ForceLuckyNextRound(); Utils.Logger.LogInfo("Remote", "Lucky round forced next"); break;
             case "pistol": _specialRoundsService.ForcePistolNextRound(); Utils.Logger.LogInfo("Remote", "Pistol round forced next"); break;
         }
+    }
+
+    // css_rcon_boss <steamid64|random> — force a boss next round.
+    private void OnRconBossCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player != null && player.IsValid) return;
+        if (command.ArgCount < 2 || _bossService == null) return;
+
+        var arg = command.GetArg(1);
+        ulong steamId = 0;
+        if (!arg.Equals("random", StringComparison.OrdinalIgnoreCase)) ulong.TryParse(arg, out steamId);
+        _bossService.ForceNextRound(steamId);
+        Utils.Logger.LogInfo("Remote", steamId == 0 ? "Boss forced next (random)" : $"Boss forced next: {steamId}");
     }
 
     private HookResult OnCommandJoinTeam(CCSPlayerController? player, CommandInfo commandInfo)

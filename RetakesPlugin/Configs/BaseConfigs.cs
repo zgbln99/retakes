@@ -62,11 +62,14 @@ public class BaseConfigs : BasePluginConfig
     [JsonPropertyName("DamageReportSettings")]
     public DamageReportSettings DamageReport { get; set; } = new();
 
+    [JsonPropertyName("BossSettings")]
+    public BossSettings Boss { get; set; } = new();
+
     [JsonPropertyName("DebugSettings")]
     public DebugSettings Debug { get; set; } = new();
 
     [JsonPropertyName("ConfigVersion")]
-    public override int Version { get; set; } = 13;
+    public override int Version { get; set; } = 14;
 }
 
 public class DebugSettings

@@ -154,6 +154,10 @@
         <div class="row"><span>Ekran końca meczu</span>
           <button class="btn sec" onclick="cfg('endscreen.enabled','1')">ON</button>
           <button class="btn sec" onclick="cfg('endscreen.enabled','0')">OFF</button></div>
+        <div class="row"><span>Tryb Boss (losowy co rundę)</span>
+          <button class="btn sec" onclick="cfg('boss.enabled','1')">ON</button>
+          <button class="btn sec" onclick="cfg('boss.enabled','0')">OFF</button></div>
+        <div class="row"><button class="btn" onclick="forceBoss()">👑 Wymuś bossa (losowy, nast. runda)</button></div>
       </div>
     </section>
 
@@ -229,6 +233,7 @@
     function cfg(k,v){if(v===''||v==null)return;post('/api/setcfg',{key:k,value:v}).then(refreshHistory);}
     function saveConfig(){post('/api/config/save',{}).then(refreshHistory);}
     function forceRound(t){post('/api/specialround',{type:t}).then(refreshHistory);}
+    function forceBoss(){post('/api/boss',{target:'random'}).then(refreshHistory);}
     function resetStattrak(t){post('/api/stattrak/reset',{target:t}).then(refreshHistory);}
     function playerAction(id,a){post('/api/player',{steamId:id,action:a}).then(()=>setTimeout(refreshPlayers,600));}
 

@@ -106,7 +106,7 @@ const CFG_KEYS = new Set([
   'pistol.enabled', 'pistol.everyx', 'pistol.minplayers',
   'endscreen.enabled', 'stattrak.enabled',
   'weapon.allowscout', 'damagereport.enabled',
-  'voice.global'
+  'voice.global', 'boss.enabled'
 ]);
 
 app.post('/api/setcfg', async (req, res) => {
@@ -129,6 +129,14 @@ app.post('/api/specialround', async (req, res) => {
   const type = String(req.body.type || '').trim().toLowerCase();
   if (type !== 'lucky' && type !== 'pistol') return res.status(400).json({ error: 'bad type' });
   try { await queueCommand(`css_rcon_specialround ${type}`); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Force a boss next round (random, or a specific steamId).
+app.post('/api/boss', async (req, res) => {
+  const target = String(req.body.target || 'random').trim();
+  if (target !== 'random' && !/^\d{5,20}$/.test(target)) return res.status(400).json({ error: 'bad target' });
+  try { await queueCommand(`css_rcon_boss ${target}`); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
