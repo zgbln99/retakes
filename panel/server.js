@@ -106,7 +106,7 @@ const CFG_KEYS = new Set([
   'pistol.enabled', 'pistol.everyx', 'pistol.minplayers',
   'endscreen.enabled', 'stattrak.enabled',
   'weapon.allowscout', 'damagereport.enabled',
-  'voice.global', 'boss.enabled'
+  'voice.global', 'boss.enabled', 'training.enabled'
 ]);
 
 app.post('/api/setcfg', async (req, res) => {

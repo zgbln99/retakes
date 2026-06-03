@@ -74,6 +74,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
     private EndGameScreenService? _endGameScreenService;
     private DamageReportService? _damageReportService;
     private BossService? _bossService;
+    private TrainingService? _trainingService;
 
     public MapConfigService? MapConfigService => _mapConfigService;
     public SpawnManager? SpawnManager => _spawnManager;
@@ -273,6 +274,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         // Boss / Juggernaut mode (quiet pick, recognizable on sight).
         _bossService = new BossService(Config.Boss, _random);
 
+        // Consent-based training position preview (transparent: notice shown to all).
+        _trainingService = new TrainingService(this, Config.Training);
+        AddTimer(1.0f, () => _trainingService?.Tick(), CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT);
+
         // Remote control bridge (web panel on a VPS via the shared MySQL database).
         _remoteControlService = new RemoteControlService(this, Config.RemoteControl, Config.Stats.Database, () => _isChangingMap);
         _remoteControlService.Initialize();
@@ -441,6 +446,18 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             DisplayName = "Tryb Boss (losowy boss co rundę)",
             Get = () => Config.Boss.Enabled,
             Set = value => Config.Boss.Enabled = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "training",
+            DisplayName = "Trening: podgląd pozycji (jawny dla wszystkich)",
+            Get = () => Config.Training.Enabled,
+            Set = value =>
+            {
+                Config.Training.Enabled = value;
+                if (value) _trainingService?.Start(); else _trainingService?.Stop();
+            }
         });
 
         // Weapon-set submenu (force a global loadout / back to random).
@@ -741,7 +758,11 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         var result = _roundEventHandlers?.OnRoundPostStart(@event, info) ?? HookResult.Continue;
         // Apply the boss AFTER weapon allocation (which sets HP/strips weapons),
         // a moment later so pawns are fully set up.
-        AddTimer(0.2f, () => _bossService?.OnRoundStart());
+        AddTimer(0.2f, () =>
+        {
+            _bossService?.OnRoundStart();
+            _trainingService?.OnRoundStart();
+        });
         return result;
     }
 
@@ -967,6 +988,10 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
                 Server.ExecuteCommand($"sv_full_alltalk {(B() ? 1 : 0)}");
                 break;
             case "boss.enabled": Config.Boss.Enabled = B(); break;
+            case "training.enabled":
+                Config.Training.Enabled = B();
+                if (B()) _trainingService?.Start(); else _trainingService?.Stop();
+                break;
             default: applied = false; break;
         }
 
