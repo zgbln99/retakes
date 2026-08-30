@@ -37,27 +37,18 @@ public class AllocationService
         }
     }
 
+    // Fixed loadout, same as the built-in allocator: AK-47 for T, M4A1-S for CT.
+    // No secondary and no per-player exceptions.
     private void AllocateWeapons(CCSPlayerController player)
     {
         if (player.Team == CsTeam.Terrorist)
         {
             player.GiveNamedItem(CsItem.AK47);
-            player.GiveNamedItem(CsItem.Deagle);
         }
 
         if (player.Team == CsTeam.CounterTerrorist)
         {
-            // Easter egg for klippy
-            if (player.PlayerName.Trim() == "klip")
-            {
-                player.GiveNamedItem(CsItem.M4A4);
-            }
-            else
-            {
-                player.GiveNamedItem(CsItem.M4A1S);
-            }
-
-            player.GiveNamedItem(CsItem.Deagle);
+            player.GiveNamedItem(CsItem.M4A1S);
         }
 
         player.GiveNamedItem(CsItem.Knife);

@@ -3,8 +3,10 @@ using System.Text.Json.Serialization;
 namespace RetakesPlugin.Configs;
 
 /// <summary>
-/// Settings for the built-in weapon allocator: random allocation plus optional
-/// per-player preferences chosen with the !guns menu.
+/// Settings for the built-in weapon allocator. By default the loadout is fixed:
+/// AK-47 for T, M4A1-S for CT, plus grenades — no randomness and no per-player
+/// preferences. Random allocation (rifle pools, snipers, random pistols) is still
+/// implemented and can be switched back on with <see cref="RandomWeapons"/>.
 /// </summary>
 public class WeaponSettings
 {
@@ -12,9 +14,42 @@ public class WeaponSettings
     [JsonPropertyName("IsEnabled")]
     public bool IsEnabled { get; set; } = true;
 
-    /// <summary>When true, players can pick a preferred rifle with !guns. When false everything is random.</summary>
+    /// <summary>
+    /// Master switch for random weapons. When false (the default) every player
+    /// gets the same fixed primary for their team — <see cref="TerroristPrimary"/>
+    /// / <see cref="CounterTerroristPrimary"/> — and the rifle pools, sniper roll
+    /// and !guns preferences are all bypassed. Grenades stay unaffected.
+    /// </summary>
+    [JsonPropertyName("RandomWeapons")]
+    public bool RandomWeapons { get; set; } = false;
+
+    /// <summary>Fixed terrorist primary used when <see cref="RandomWeapons"/> is false.</summary>
+    [JsonPropertyName("TerroristPrimary")]
+    public string TerroristPrimary { get; set; } = "weapon_ak47";
+
+    /// <summary>Fixed counter-terrorist primary used when <see cref="RandomWeapons"/> is false.</summary>
+    [JsonPropertyName("CounterTerroristPrimary")]
+    public string CounterTerroristPrimary { get; set; } = "weapon_m4a1_silencer";
+
+    /// <summary>Give a secondary pistol at all. Off by default: rifle + grenades only.</summary>
+    [JsonPropertyName("GivePistol")]
+    public bool GivePistol { get; set; } = false;
+
+    /// <summary>Fixed terrorist pistol used when <see cref="GivePistol"/> is on and randomness is off.</summary>
+    [JsonPropertyName("TerroristPistol")]
+    public string TerroristPistol { get; set; } = "weapon_glock";
+
+    /// <summary>Fixed counter-terrorist pistol used when <see cref="GivePistol"/> is on and randomness is off.</summary>
+    [JsonPropertyName("CounterTerroristPistol")]
+    public string CounterTerroristPistol { get; set; } = "weapon_usp_silencer";
+
+    /// <summary>
+    /// When true, players can pick a preferred rifle with !guns. Only has an effect
+    /// while <see cref="RandomWeapons"/> is on — with a fixed loadout there is
+    /// nothing to choose.
+    /// </summary>
     [JsonPropertyName("AllowPreferences")]
-    public bool AllowPreferences { get; set; } = true;
+    public bool AllowPreferences { get; set; } = false;
 
     [JsonPropertyName("GiveArmor")]
     public bool GiveArmor { get; set; } = true;
@@ -57,33 +92,33 @@ public class WeaponSettings
 
     /// <summary>Allow snipers (AWP/SSG) in random allocation / preferences.</summary>
     [JsonPropertyName("AllowSnipers")]
-    public bool AllowSnipers { get; set; } = true;
+    public bool AllowSnipers { get; set; } = false;
 
     /// <summary>Allow the SSG 08 (scout) specifically. When false the scout is never given.</summary>
     [JsonPropertyName("AllowScout")]
-    public bool AllowScout { get; set; } = true;
+    public bool AllowScout { get; set; } = false;
 
     /// <summary>Probability (0..1) of randomly receiving a sniper when no rifle preference is set.</summary>
     [JsonPropertyName("SniperChance")]
-    public double SniperChance { get; set; } = 0.05;
+    public double SniperChance { get; set; } = 0.0;
 
+    /// <summary>Random-mode rifle pool for T. Only used when <see cref="RandomWeapons"/> is on.</summary>
     [JsonPropertyName("TerroristRifles")]
     public List<string> TerroristRifles { get; set; } = new()
     {
-        "weapon_ak47", "weapon_galilar", "weapon_sg556"
+        "weapon_ak47"
     };
 
+    /// <summary>Random-mode rifle pool for CT. Only used when <see cref="RandomWeapons"/> is on.</summary>
     [JsonPropertyName("CounterTerroristRifles")]
     public List<string> CounterTerroristRifles { get; set; } = new()
     {
-        "weapon_m4a1", "weapon_m4a1_silencer", "weapon_famas", "weapon_aug"
+        "weapon_m4a1_silencer"
     };
 
+    /// <summary>Sniper pool. Empty by default — snipers are off.</summary>
     [JsonPropertyName("Snipers")]
-    public List<string> Snipers { get; set; } = new()
-    {
-        "weapon_awp", "weapon_ssg08"
-    };
+    public List<string> Snipers { get; set; } = new();
 
     [JsonPropertyName("TerroristPistols")]
     public List<string> TerroristPistols { get; set; } = new()

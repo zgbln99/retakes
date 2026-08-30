@@ -422,6 +422,22 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
 
         _adminMenuService.RegisterToggle(new FeatureToggle
         {
+            Key = "randomweapons",
+            DisplayName = "Losowe bronie (OFF = tylko AK-47 / M4A1-S)",
+            Get = () => Config.Weapon.RandomWeapons,
+            Set = value => Config.Weapon.RandomWeapons = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
+            Key = "weaponpistol",
+            DisplayName = "Pistolet w zestawie",
+            Get = () => Config.Weapon.GivePistol,
+            Set = value => Config.Weapon.GivePistol = value
+        });
+
+        _adminMenuService.RegisterToggle(new FeatureToggle
+        {
             Key = "damagereport",
             DisplayName = "Raport obrażeń (po rundzie)",
             Get = () => Config.DamageReport.Enabled,
@@ -958,6 +974,8 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
             // Weapons
             case "weapon.enabled": Config.Weapon.IsEnabled = B(); break;
             case "weapon.allowpreferences": Config.Weapon.AllowPreferences = B(); break;
+            case "weapon.random": Config.Weapon.RandomWeapons = B(); break;
+            case "weapon.givepistol": Config.Weapon.GivePistol = B(); break;
             case "weapon.allowsnipers": Config.Weapon.AllowSnipers = B(); break;
             case "weapon.sniperchance": Config.Weapon.SniperChance = D(); break;
             case "weapon.mingrenades": Config.Weapon.MinGrenades = I(); break;

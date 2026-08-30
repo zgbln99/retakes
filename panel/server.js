@@ -99,6 +99,7 @@ const PLAYER_ACTIONS = new Set([
 const CFG_KEYS = new Set([
   'instadefuse.enabled',
   'weapon.enabled', 'weapon.allowpreferences', 'weapon.allowsnipers',
+  'weapon.random', 'weapon.givepistol',
   'weapon.sniperchance', 'weapon.mingrenades', 'weapon.maxgrenades', 'weapon.lonegrenades',
   'stats.enabled', 'hud.enabled', 'automessage.enabled',
   'mapvote.allowrtv', 'autoendvote.enabled', 'fun.enabled',

@@ -10,9 +10,11 @@ namespace RetakesPlugin.Services;
 
 /// <summary>
 /// Built-in weapon allocator. Replaces the stubbed fallback allocation in the
-/// base plugin with real weapon giving: random per round, optionally overridden
-/// by each player's !guns preferences, or globally forced to a preset weapon set
-/// by an admin. Everything is symmetric and announced — no hidden advantages.
+/// base plugin with real weapon giving. By default the loadout is fixed and
+/// identical for everyone on a team — AK-47 for T, M4A1-S for CT, plus grenades.
+/// Random allocation and !guns preferences are kept behind
+/// <see cref="WeaponSettings.RandomWeapons"/>, and an admin can still force a
+/// preset weapon set. Everything is symmetric and announced — no hidden advantages.
 /// </summary>
 public class WeaponAllocationService
 {
@@ -125,6 +127,16 @@ public class WeaponAllocationService
             return ForcedSet.Primary(team, _random);
         }
 
+        // Fixed loadout (default): no roll, no sniper chance, no preferences.
+        if (!_settings.RandomWeapons)
+        {
+            var fixedPrimary = team == CsTeam.Terrorist
+                ? _settings.TerroristPrimary
+                : _settings.CounterTerroristPrimary;
+
+            return string.IsNullOrWhiteSpace(fixedPrimary) ? null : fixedPrimary;
+        }
+
         var pref = _settings.AllowPreferences ? GetPreference(steamId) : null;
 
         var rifles = team == CsTeam.Terrorist ? _settings.TerroristRifles : _settings.CounterTerroristRifles;
@@ -164,6 +176,18 @@ public class WeaponAllocationService
         if (ForcedSet != null)
         {
             return ForcedSet.Pistol(team, _random);
+        }
+
+        // No secondary at all by default — rifle + grenades only.
+        if (!_settings.GivePistol) return null;
+
+        if (!_settings.RandomWeapons)
+        {
+            var fixedPistol = team == CsTeam.Terrorist
+                ? _settings.TerroristPistol
+                : _settings.CounterTerroristPistol;
+
+            return string.IsNullOrWhiteSpace(fixedPistol) ? null : fixedPistol;
         }
 
         var pistols = team == CsTeam.Terrorist ? _settings.TerroristPistols : _settings.CounterTerroristPistols;
@@ -402,17 +426,42 @@ public class WeaponAllocationService
     #region Weapon set presets
     private List<WeaponSet> BuildSets()
     {
-        string TeamRifle(CsTeam t) => t == CsTeam.Terrorist
-            ? PickOr(_settings.TerroristRifles, "weapon_ak47")
-            : PickOr(_settings.CounterTerroristRifles, "weapon_m4a1_silencer");
+        // Presets follow the same fixed rifles as normal rounds unless random
+        // allocation has been turned back on, in which case they roll the pools.
+        string TeamRifle(CsTeam t)
+        {
+            if (!_settings.RandomWeapons)
+            {
+                return t == CsTeam.Terrorist
+                    ? Or(_settings.TerroristPrimary, "weapon_ak47")
+                    : Or(_settings.CounterTerroristPrimary, "weapon_m4a1_silencer");
+            }
 
-        string TeamPistol(CsTeam t) => t == CsTeam.Terrorist
-            ? PickOr(_settings.TerroristPistols, "weapon_glock")
-            : PickOr(_settings.CounterTerroristPistols, "weapon_usp_silencer");
+            return t == CsTeam.Terrorist
+                ? PickOr(_settings.TerroristRifles, "weapon_ak47")
+                : PickOr(_settings.CounterTerroristRifles, "weapon_m4a1_silencer");
+        }
+
+        string TeamPistol(CsTeam t)
+        {
+            if (!_settings.RandomWeapons)
+            {
+                return t == CsTeam.Terrorist
+                    ? Or(_settings.TerroristPistol, "weapon_glock")
+                    : Or(_settings.CounterTerroristPistol, "weapon_usp_silencer");
+            }
+
+            return t == CsTeam.Terrorist
+                ? PickOr(_settings.TerroristPistols, "weapon_glock")
+                : PickOr(_settings.CounterTerroristPistols, "weapon_usp_silencer");
+        }
 
         return new List<WeaponSet>
         {
-            new("rifles", "Karabiny (AK/M4)", (t, _) => TeamRifle(t), (t, _) => TeamPistol(t)),
+            // The plain rifle set mirrors the normal loadout, so it only adds a
+            // pistol when secondaries are enabled at all.
+            new("rifles", "Karabiny (AK/M4)", (t, _) => TeamRifle(t),
+                (t, _) => _settings.GivePistol ? TeamPistol(t) : null),
             new("pistols", "Tylko pistolety", (_, _) => null, (t, _) => TeamPistol(t)),
             new("deagle", "Deagle", (_, _) => null, (_, _) => "weapon_deagle"),
             new("awp", "AWP", (_, _) => "weapon_awp", (t, _) => TeamPistol(t)),
@@ -422,5 +471,8 @@ public class WeaponAllocationService
 
     private string PickOr(IReadOnlyList<string> list, string fallback) =>
         list.Count > 0 ? Pick(list) : fallback;
+
+    private static string Or(string? value, string fallback) =>
+        string.IsNullOrWhiteSpace(value) ? fallback : value;
     #endregion
 }

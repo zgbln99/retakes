@@ -27,9 +27,12 @@ public class GunsCommand
     {
         if (!PlayerHelper.IsValid(player)) return;
 
-        if (!_weaponService.Settings.IsEnabled || !_weaponService.Settings.AllowPreferences)
+        // With the fixed loadout (random weapons off) there is nothing to choose.
+        if (!_weaponService.Settings.IsEnabled
+            || !_weaponService.Settings.RandomWeapons
+            || !_weaponService.Settings.AllowPreferences)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wybór broni jest wyłączony.");
+            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wybór broni jest wyłączony — wszyscy dostają AK-47 (T) / M4A1-S (CT).");
             return;
         }
 

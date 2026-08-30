@@ -26,9 +26,10 @@ rozszerzając je o dodatkowe funkcje. Pełna atrybucja w pliku [`NOTICE`](./NOTI
 - [x] Permisje przez `AdminManager` (konfigurowalne flagi)
 
 ✅ **Faza 3 — broń:**
-- [x] Wbudowany allocator (losowy przydział: pancerz, karabin, pistolet, granaty, defuser)
-- [x] Preferencje gracza przez menu **`!guns`** (karabin T/CT, snajperka)
-- [x] Konfigurowalne pule broni + szansa na snajperkę
+- [x] Wbudowany allocator (pancerz, karabin, granaty, defuser)
+- [x] **Stały zestaw: AK-47 (T) / M4A1-S (CT)** — bez losowania, bez snajperek, bez pistoletu
+- [x] Granaty dalej losowe (pule + limity per drużyna)
+- [x] Tryb losowy (pule broni, snajperki, `!guns`) zostaje dostępny pod `RandomWeapons`
 - [x] Przełączniki broni w panelu admina
 
 ✅ **Faza 4 — statystyki PvP (MySQL):**

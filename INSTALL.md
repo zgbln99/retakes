@@ -54,7 +54,7 @@ csgo/addons/counterstrikesharp/configs/plugins/RetakesPlugin/RetakesPlugin.json
 Najważniejsze sekcje:
 
 - `InstadefuseSettings` — wbudowany instant defuse
-- `WeaponSettings` — losowa broń + preferencje `!guns`
+- `WeaponSettings` — stały zestaw AK-47 / M4A1-S + granaty (`RandomWeapons: false`)
 - `AdminMenuSettings` — panel admina (`!admin`), flagi uprawnień
 - `StatsSettings` — statystyki PvP (MySQL z DatHost), domyślnie wyłączone
 

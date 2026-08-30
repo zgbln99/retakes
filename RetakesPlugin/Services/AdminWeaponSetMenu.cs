@@ -5,10 +5,10 @@ using CounterStrikeSharp.API.Modules.Utils;
 namespace RetakesPlugin.Services;
 
 /// <summary>
-/// Admin submenu for forcing a global weapon set (or returning to random). The
-/// chosen set applies to everyone equally and is announced to the whole server,
-/// so it acts as a fair game mode rather than an advantage. Rendered through the
-/// shared MenuService.
+/// Admin submenu for forcing a global weapon set (or returning to the default
+/// AK-47 / M4A1-S loadout). The chosen set applies to everyone equally and is
+/// announced to the whole server, so it acts as a fair game mode rather than an
+/// advantage. Rendered through the shared MenuService.
 /// </summary>
 public class AdminWeaponSetMenu
 {
@@ -23,14 +23,14 @@ public class AdminWeaponSetMenu
 
     public void Open(CCSPlayerController player)
     {
-        var current = _weaponService.ForcedSet?.DisplayName ?? "Losowo";
+        var current = _weaponService.ForcedSet?.DisplayName ?? "Domyślny (AK-47 / M4A1-S)";
 
         _menus.Show(player, $"Zestaw broni (teraz: {current})", menu =>
         {
-            menu.AddOption("Losowo (domyślnie)", _ =>
+            menu.AddOption("Domyślny (AK-47 / M4A1-S)", _ =>
             {
                 _weaponService.SetForcedSet(null);
-                Announce("Losowy przydział broni");
+                Announce("Domyślny przydział broni (AK-47 / M4A1-S)");
             });
 
             foreach (var set in _weaponService.AvailableSets)

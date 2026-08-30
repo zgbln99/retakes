@@ -42,27 +42,44 @@ Sterowanie też z panelu admina (toggle).
 
 ---
 
-## 3. Broń — losowość + preferencje
+## 3. Broń — stały zestaw (AK-47 / M4A1-S)
 
-Wbudowany allocator: pancerz/hełm, defuser dla CT, karabin, pistolet, granaty, nóż.
+Wbudowany allocator: pancerz/hełm, defuser dla CT, karabin, granaty, nóż.
 
-| Funkcja | Komenda | Uprawnienia |
-|---|---|---|
-| Menu wyboru broni (GUI) | `!guns` / `!gun` / `!weapon` | gracz |
+**Domyślnie losowanie broni jest całkowicie wyłączone.** Każdy dostaje ten sam
+karabin swojej drużyny:
 
-**Losowość:**
-- Karabin losowany z puli drużyny; szansa na snajperkę (`SniperChance`, domyślnie 12%)
-- Preferencje gracza (`!guns`): ulubiony karabin T/CT, „preferuj snajperkę"
+| Drużyna | Broń |
+|---|---|
+| T | AK-47 (`weapon_ak47`) |
+| CT | M4A1-S (`weapon_m4a1_silencer`) |
 
-**Granaty (losowa liczba):**
-- `MinGrenades` (1) … `MaxGrenades` (3) — losowo tyle granatów na rundę
-- `LonePlayerExtraGrenades` (2) — bonus, gdy gracz zostaje sam na drużynie
-- `GrenadeHardCap` (4) — twardy limit; respektuje limity CS2 (2 flashe, reszta po 1)
+Bez pistoletu, bez snajperek, bez Scouta, bez losowych karabinów. `!guns` jest
+wyłączone (nie ma czego wybierać) i odpowiada komunikatem o stałym zestawie.
 
-**Config — `WeaponSettings`:** pule broni/pistoletów/granatów per drużyna, toggle
-`IsEnabled`, `AllowPreferences`, `AllowSnipers`, opcje pancerza/defusera.
+**Granaty zostają bez zmian (dalej losowe):**
+- `MinGrenades` (1) … `MaxGrenades` (2) — losowo tyle granatów na rundę
+- `ExtraGrenadeChance` (0.25) — szansa na każdy kolejny granat ponad minimum
+- `LonePlayerExtraGrenades` (1) — bonus, gdy gracz zostaje sam na drużynie
+- `GrenadeHardCap` (3) — twardy limit; respektuje limity CS2 (2 flashe, reszta po 1)
 
-Toggles w panelu admina: allocator on/off, preferencje on/off.
+**Config — `WeaponSettings`:**
+- `RandomWeapons` (domyślnie `false`) — główny przełącznik losowania broni.
+  `false` = stały zestaw poniżej; `true` = stary tryb (pule, snajperki, `!guns`).
+- `TerroristPrimary` / `CounterTerroristPrimary` — stała broń per drużyna.
+- `GivePistol` (domyślnie `false`) + `TerroristPistol` / `CounterTerroristPistol` —
+  opcjonalny pistolet w zestawie.
+- `AllowPreferences`, `AllowSnipers`, `AllowScout`, `SniperChance` — domyślnie
+  wyłączone / zero; działają tylko przy `RandomWeapons = true`.
+- Pule `TerroristRifles` / `CounterTerroristRifles` / `Snipers` / `*Pistols` są
+  używane wyłącznie w trybie losowym.
+- Pule granatów per drużyna oraz opcje pancerza/defusera — bez zmian.
+
+Toggles w panelu admina i w menu admina: allocator on/off, „Losowe bronie" on/off,
+„Pistolet w zestawie" on/off, preferencje on/off.
+
+**Powrót do losowania:** `weapon.random` = `1` (panel / `css_rcon_setcfg`) albo
+`"RandomWeapons": true` w configu.
 
 ---
 
