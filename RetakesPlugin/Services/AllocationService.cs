@@ -37,8 +37,8 @@ public class AllocationService
         }
     }
 
-    // Fixed loadout, same as the built-in allocator: AK-47 for T, M4A1-S for CT.
-    // No secondary and no per-player exceptions.
+    // Fixed loadout, same as the built-in allocator: AK-47 for T, M4A1-S for CT,
+    // Deagle for both. No per-player exceptions.
     private void AllocateWeapons(CCSPlayerController player)
     {
         if (player.Team == CsTeam.Terrorist)
@@ -51,6 +51,7 @@ public class AllocationService
             player.GiveNamedItem(CsItem.M4A1S);
         }
 
+        player.GiveNamedItem(CsItem.Deagle);
         player.GiveNamedItem(CsItem.Knife);
     }
 

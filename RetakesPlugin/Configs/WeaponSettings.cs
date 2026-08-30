@@ -4,9 +4,10 @@ namespace RetakesPlugin.Configs;
 
 /// <summary>
 /// Settings for the built-in weapon allocator. By default the loadout is fixed:
-/// AK-47 for T, M4A1-S for CT, plus grenades — no randomness and no per-player
-/// preferences. Random allocation (rifle pools, snipers, random pistols) is still
-/// implemented and can be switched back on with <see cref="RandomWeapons"/>.
+/// AK-47 for T, M4A1-S for CT, a Deagle as the secondary, plus grenades — no
+/// randomness and no per-player preferences. Random allocation (rifle pools,
+/// snipers, random pistols) is still implemented and can be switched back on
+/// with <see cref="RandomWeapons"/>.
 /// </summary>
 public class WeaponSettings
 {
@@ -31,17 +32,17 @@ public class WeaponSettings
     [JsonPropertyName("CounterTerroristPrimary")]
     public string CounterTerroristPrimary { get; set; } = "weapon_m4a1_silencer";
 
-    /// <summary>Give a secondary pistol at all. Off by default: rifle + grenades only.</summary>
+    /// <summary>Give a secondary pistol. On by default — the Deagle for both teams.</summary>
     [JsonPropertyName("GivePistol")]
-    public bool GivePistol { get; set; } = false;
+    public bool GivePistol { get; set; } = true;
 
     /// <summary>Fixed terrorist pistol used when <see cref="GivePistol"/> is on and randomness is off.</summary>
     [JsonPropertyName("TerroristPistol")]
-    public string TerroristPistol { get; set; } = "weapon_glock";
+    public string TerroristPistol { get; set; } = "weapon_deagle";
 
     /// <summary>Fixed counter-terrorist pistol used when <see cref="GivePistol"/> is on and randomness is off.</summary>
     [JsonPropertyName("CounterTerroristPistol")]
-    public string CounterTerroristPistol { get; set; } = "weapon_usp_silencer";
+    public string CounterTerroristPistol { get; set; } = "weapon_deagle";
 
     /// <summary>
     /// When true, players can pick a preferred rifle with !guns. Only has an effect

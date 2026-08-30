@@ -42,19 +42,19 @@ Sterowanie też z panelu admina (toggle).
 
 ---
 
-## 3. Broń — stały zestaw (AK-47 / M4A1-S)
+## 3. Broń — stały zestaw (AK-47 / M4A1-S + Deagle)
 
-Wbudowany allocator: pancerz/hełm, defuser dla CT, karabin, granaty, nóż.
+Wbudowany allocator: pancerz/hełm, defuser dla CT, karabin, pistolet, granaty, nóż.
 
 **Domyślnie losowanie broni jest całkowicie wyłączone.** Każdy dostaje ten sam
-karabin swojej drużyny:
+zestaw dla swojej drużyny:
 
-| Drużyna | Broń |
-|---|---|
-| T | AK-47 (`weapon_ak47`) |
-| CT | M4A1-S (`weapon_m4a1_silencer`) |
+| Drużyna | Karabin | Pistolet |
+|---|---|---|
+| T | AK-47 (`weapon_ak47`) | Deagle (`weapon_deagle`) |
+| CT | M4A1-S (`weapon_m4a1_silencer`) | Deagle (`weapon_deagle`) |
 
-Bez pistoletu, bez snajperek, bez Scouta, bez losowych karabinów. `!guns` jest
+Bez snajperek, bez Scouta, bez losowych karabinów i pistoletów. `!guns` jest
 wyłączone (nie ma czego wybierać) i odpowiada komunikatem o stałym zestawie.
 
 **Granaty zostają bez zmian (dalej losowe):**
@@ -67,8 +67,8 @@ wyłączone (nie ma czego wybierać) i odpowiada komunikatem o stałym zestawie.
 - `RandomWeapons` (domyślnie `false`) — główny przełącznik losowania broni.
   `false` = stały zestaw poniżej; `true` = stary tryb (pule, snajperki, `!guns`).
 - `TerroristPrimary` / `CounterTerroristPrimary` — stała broń per drużyna.
-- `GivePistol` (domyślnie `false`) + `TerroristPistol` / `CounterTerroristPistol` —
-  opcjonalny pistolet w zestawie.
+- `GivePistol` (domyślnie `true`) + `TerroristPistol` / `CounterTerroristPistol` —
+  pistolet w zestawie, domyślnie Deagle dla obu drużyn. `false` = sam karabin.
 - `AllowPreferences`, `AllowSnipers`, `AllowScout`, `SniperChance` — domyślnie
   wyłączone / zero; działają tylko przy `RandomWeapons = true`.
 - Pule `TerroristRifles` / `CounterTerroristRifles` / `Snipers` / `*Pistols` są

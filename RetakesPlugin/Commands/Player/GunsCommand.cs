@@ -32,11 +32,29 @@ public class GunsCommand
             || !_weaponService.Settings.RandomWeapons
             || !_weaponService.Settings.AllowPreferences)
         {
-            command.ReplyToCommand($" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wybór broni jest wyłączony — wszyscy dostają AK-47 (T) / M4A1-S (CT).");
+            command.ReplyToCommand(
+                $" {ChatColors.Green}[CWELOWNIA]{ChatColors.White} Wybór broni jest wyłączony — wszyscy dostają {FixedLoadoutText()}.");
             return;
         }
 
         _menus.OpenRoot(player!, ShowMainMenu);
+    }
+
+    /// <summary>Human-readable description of the fixed loadout, e.g. "AK-47 (T) / M4A1-S (CT) + Desert Eagle".</summary>
+    private string FixedLoadoutText()
+    {
+        var settings = _weaponService.Settings;
+        var text = $"{WeaponAllocationService.DisplayName(settings.TerroristPrimary)} (T) / " +
+                   $"{WeaponAllocationService.DisplayName(settings.CounterTerroristPrimary)} (CT)";
+
+        if (!settings.GivePistol) return text;
+
+        var tPistol = WeaponAllocationService.DisplayName(settings.TerroristPistol);
+        var ctPistol = WeaponAllocationService.DisplayName(settings.CounterTerroristPistol);
+
+        return tPistol == ctPistol
+            ? $"{text} + {tPistol}"
+            : $"{text} + {tPistol} (T) / {ctPistol} (CT)";
     }
 
     private void ShowMainMenu(CCSPlayerController player)

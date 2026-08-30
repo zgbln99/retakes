@@ -11,7 +11,8 @@ namespace RetakesPlugin.Services;
 /// <summary>
 /// Built-in weapon allocator. Replaces the stubbed fallback allocation in the
 /// base plugin with real weapon giving. By default the loadout is fixed and
-/// identical for everyone on a team — AK-47 for T, M4A1-S for CT, plus grenades.
+/// identical for everyone on a team — AK-47 for T, M4A1-S for CT, a Deagle as
+/// the secondary, plus grenades.
 /// Random allocation and !guns preferences are kept behind
 /// <see cref="WeaponSettings.RandomWeapons"/>, and an admin can still force a
 /// preset weapon set. Everything is symmetric and announced — no hidden advantages.
@@ -178,7 +179,7 @@ public class WeaponAllocationService
             return ForcedSet.Pistol(team, _random);
         }
 
-        // No secondary at all by default — rifle + grenades only.
+        // Secondary can be turned off entirely (rifle + grenades only).
         if (!_settings.GivePistol) return null;
 
         if (!_settings.RandomWeapons)
@@ -459,7 +460,7 @@ public class WeaponAllocationService
         return new List<WeaponSet>
         {
             // The plain rifle set mirrors the normal loadout, so it only adds a
-            // pistol when secondaries are enabled at all.
+            // pistol when secondaries are enabled.
             new("rifles", "Karabiny (AK/M4)", (t, _) => TeamRifle(t),
                 (t, _) => _settings.GivePistol ? TeamPistol(t) : null),
             new("pistols", "Tylko pistolety", (_, _) => null, (t, _) => TeamPistol(t)),

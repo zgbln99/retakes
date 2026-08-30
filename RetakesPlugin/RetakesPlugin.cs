@@ -431,7 +431,7 @@ public class RetakesPlugin : BasePlugin, IPluginConfig<BaseConfigs>
         _adminMenuService.RegisterToggle(new FeatureToggle
         {
             Key = "weaponpistol",
-            DisplayName = "Pistolet w zestawie",
+            DisplayName = "Pistolet w zestawie (Deagle)",
             Get = () => Config.Weapon.GivePistol,
             Set = value => Config.Weapon.GivePistol = value
         });
